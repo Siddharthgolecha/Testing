@@ -303,7 +303,7 @@ jobs:
           fi
           if ! timeout 1800s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_uniform19_aer.py' -q >"$log_file" 2>&1; then
             # Only emit our fixed test markers and exception type (never private paths/tracebacks).
-            grep -E '^AER_STAGE_|^(AssertionError|AttributeError|TypeError|ValueError|RuntimeError|NameError|ImportError|SyntaxError|ModuleNotFoundError|MemoryError|QiskitError|AerError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -10 || true
+            grep -E '^AER_(STAGE|DIAG)_|^(AssertionError|AttributeError|TypeError|ValueError|RuntimeError|NameError|ImportError|SyntaxError|ModuleNotFoundError|MemoryError|QiskitError|AerError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -10 || true
             echo '::error::Uniform KRK full Qiskit Aer execution failed or timed out (traceback suppressed).'
             exit 1
           fi
