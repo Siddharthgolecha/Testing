@@ -307,7 +307,7 @@ jobs:
             echo '::error::Uniform KRK full Qiskit Aer execution failed or timed out (traceback suppressed).'
             exit 1
           fi
-          echo 'Universal KRK quantum circuit: actual Qiskit Aer basis-state run PASS.'
+          echo 'Uniform KRK circuit (basis-only transpile): Qiskit Aer basis-state run PASS.'
           echo 'Uniform 19-bit board-controlled transition: PASS (private test output suppressed).'
 
       - name: Remove temporary private checkout and reports
