@@ -1,5 +1,4 @@
 name: Private Coalescent CI (ephemeral)
-# Temporary explicit validation of private 19-qubit rook-hop quantum echo.
 
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
