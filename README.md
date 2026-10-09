@@ -4,7 +4,7 @@ This repository provides **independent, reproducible smoke tests** for Qiskit (P
 
 ## Toolchains
 
-- **Qiskit:** Python 3.11, Qiskit 2.x, Qiskit Aer 0.x, and `unittest` (versions constrained in `requirements.txt`).
+- **Qiskit:** Python 3.11, Qiskit 2.2.3, Qiskit Aer 0.17.2, and `unittest` (pinned in `requirements.txt`).
 - **Lean:** Lean 4.32.1 and Mathlib 4.32.1 (aligned with the Lean toolchain of `coalescent-research`), managed by `elan`/`lake`. Transitive Mathlib dependencies are pinned by `lean/lake-manifest.json`.
 - **CI:** `.github/workflows/toolchain-ci.yml` runs two separate jobs on standard `ubuntu-latest` GitHub-hosted runners for each push and pull request, and supports manual `workflow_dispatch`.
 

@@ -1,0 +1,64 @@
+name: Toolchain CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qiskit:
+    name: Qiskit / Python smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - name: Install pinned Qiskit and Aer
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      - name: Report installed toolchains
+        run: |
+          python -V
+          python -c 'import qiskit, qiskit_aer; print("Qiskit:", qiskit.__version__); print("Aer:", qiskit_aer.__version__)'
+      - name: Run Qiskit tests
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+
+  lean:
+    name: Lean 4 / Mathlib smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: lean
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1, as in Coalescent CI
+        with:
+          lake-package-directory: lean
+          auto-config: "false"
+          build: "false"
+          leanchecker: false
+          use-mathlib-cache: "true"
+          use-github-cache: "true"
+      - name: Report installed Lean toolchains
+        run: |
+          lean --version
+          lake --version
+      - name: Compile public Mathlib smoke theorem
+        run: lake build Testing.Smoke
