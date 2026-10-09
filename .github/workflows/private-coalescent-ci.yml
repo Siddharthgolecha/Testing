@@ -18,6 +18,8 @@ on:
           - schi-next
           - lean-smoke
           - both
+          - theory-krk
+          - theory-lean
         default: schi-next
 
 permissions:
@@ -55,7 +57,7 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' || inputs.suite == 'theory-krk' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -97,7 +99,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' }}
+        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' || inputs.suite == 'theory-lean' || inputs.suite == 'theory-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
@@ -119,9 +121,122 @@ jobs:
           fi
           echo 'Private Lean smoke target: PASS (private output suppressed).'
 
+
+      # These checks read private theory sources from runner-local private-src.
+      # Public workflow source contains only generic test/compile invocations.
+      - name: Check private KRK geometry, D4 symmetry and adversarial policy
+        if: ${{ inputs.suite == 'theory-krk' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-krk.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          tests=(
+            test_directional_step.py
+            test_krk_dihedral_record.py
+            test_geometric_progress.py
+            test_uniform_rank_reference.py
+          )
+          for test_file in "${tests[@]}"; do
+            if ! timeout 600s python -B -m unittest discover \
+                -s research/chess/theory -p "$test_file" -q >"$log_file" 2>&1; then
+              echo '::error::Private KRK theory tests failed or timed out. Tracebacks intentionally withheld.'
+              exit 1
+            fi
+          done
+          echo 'Private KRK geometry / D4 / rank reference: PASS (output suppressed).'
+
+      - name: Compile complete private directional KRK step with Qiskit
+        if: ${{ inputs.suite == 'theory-krk' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-qiskit-krk.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 1200s python -B - <<'PY' >"$log_file" 2>&1
+          import sys
+          sys.path.insert(0, "research/chess/theory")
+          from directional_step import directional_circuit, run_directional
+          from qiskit import QuantumCircuit, transpile
+          from qiskit_aer import AerSimulator
+          from uniform_step import encode_state
+          from test_uniform_step import State
+          src = directional_circuit()
+          assert src.total_qubits == 155
+          assert len(src.gates) == 4507
+          qc = QuantumCircuit(src.total_qubits + 9)
+          for g in src.gates:
+              k = len(g.controls)
+              flips = [q for q,b in zip(g.controls,g.expected) if not b]
+              for q in flips: qc.x(q)
+              if k == 0: qc.x(g.target)
+              elif k == 1: qc.cx(g.controls[0], g.target)
+              elif k == 2: qc.ccx(*g.controls, g.target)
+              else:
+                  work = range(src.total_qubits, src.total_qubits+k-2)
+                  chain = [(g.controls[0],g.controls[1],work[0])]
+                  chain.extend((work[i-2],g.controls[i],work[i-1])
+                                for i in range(2,k-1))
+                  for a,b,t in chain: qc.ccx(a,b,t)
+                  qc.ccx(work[-1], g.controls[-1], g.target)
+                  for a,b,t in reversed(chain): qc.ccx(a,b,t)
+              for q in flips: qc.x(q)
+          assert qc.num_qubits == 164
+          assert set(qc.count_ops()).issubset({'x','cx','ccx'})
+          basis = transpile(qc, basis_gates=['x','sx','rz','cx'],
+                            optimization_level=0)
+          assert basis.num_qubits == 164
+          assert basis.count_ops().get('cx',0) > 0
+          assert set(basis.count_ops()).issubset({'x','sx','rz','cx'})
+          # Restrict hardware-scale simulation: only a basis-permutation fixture,
+          # using Aer MPS rather than an impossible 2**164 dense statevector.
+          state = State(4, 0, 8, 12, 'b')
+          action = 8
+          expected,_ = run_directional(state,action)
+          circuit = QuantumCircuit(qc.num_qubits,18)
+          bits = encode_state(state) | (action << 14)
+          for q in range(19):
+              if (bits >> q) & 1: circuit.x(q)
+          circuit.compose(qc,inplace=True)
+          circuit.measure(list(range(19,37)),list(range(18)))
+          sim = AerSimulator(method='matrix_product_state',max_parallel_threads=2)
+          result=sim.run(circuit,shots=1,seed_simulator=20261009).result()
+          assert result.success
+          assert result.get_counts()=={format(expected,'018b'):1}
+          print('Private exact geometry gate-list Qiskit compile and Aer fixture PASS')
+          PY
+          then
+            echo '::error::Private complete KRK Qiskit transpilation / Aer check failed or timed out. Tracebacks withheld.'
+            exit 1
+          fi
+          echo 'Private complete KRK Qiskit transpilation and one Aer basis fixture: PASS.'
+
+      - name: Compile dedicated private QuantumChess Lean theory modules
+        if: ${{ inputs.suite == 'theory-lean' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-krk-lean.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          modules=(
+            RecordAlgebra/QuantumChess/HistoryQuotient.lean
+            RecordAlgebra/QuantumChess/ObservablePolicyCover.lean
+            RecordAlgebra/QuantumChess/NecessaryFeatureSeparation.lean
+            RecordAlgebra/QuantumChess/CausalRefinementMonotonicity.lean
+          )
+          for module in "${modules[@]}"; do
+            if ! timeout 1200s lake env lean "$module" >"$log_file" 2>&1; then
+              echo '::error::Private QuantumChess Lean module failed or timed out. Details suppressed.'
+              exit 1
+            fi
+          done
+          if grep -nE '^[[:space:]]*(sorry|admit|axiom)([[:space:]]|$)' "${modules[@]}" >/dev/null; then
+            echo '::error::Proof-hole or axiom declaration found in dedicated QuantumChess modules.'
+            exit 1
+          fi
+          echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
+
       - name: Remove temporary private checkout and reports
         if: always()
         run: |
           rm -rf -- "$GITHUB_WORKSPACE/private-src"
-          rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.*
+          rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.* \
+            "$RUNNER_TEMP"/private-krk.* "$RUNNER_TEMP"/private-qiskit-krk.* "$RUNNER_TEMP"/private-krk-lean.*
           echo 'Ephemeral checkout cleanup complete. No private files committed or uploaded.'
