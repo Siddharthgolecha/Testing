@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -498,6 +501,13 @@ jobs:
             exit 1
           fi
           echo 'Existing chess web API compatibility: PASS.'
+          if ! timeout 1200s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_rook_hopping19.py' -q >"$log_file" 2>&1; then
+            grep -E '^(FAIL|ERROR): test_|^(AssertionError|ValueError|TypeError|ImportError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -8 || true
+            echo '::error::19-qubit orbital rook-hopping quantum regression failed.'
+            exit 1
+          fi
+          echo 'Controlled 19-qubit orbital SWAP/XY Aer and exhaustive occupancy parity: PASS.'
+
 
       - name: Remove temporary private checkout and reports
         if: always()
