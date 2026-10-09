@@ -122,6 +122,27 @@ jobs:
           echo 'Private Lean smoke target: PASS (private output suppressed).'
 
 
+      - name: Checkout merged KRK-v1 canonical source (runner-local, theory only)
+        if: ${{ inputs.suite == 'theory-krk' }}
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: main
+          path: canonical-src
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          ssh-strict: true
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+
+      - name: Stage canonical KRK semantics for cross-ref tests, without a commit
+        if: ${{ inputs.suite == 'theory-krk' }}
+        run: |
+          mkdir -p -- private-src/chess/quantum_krk
+          cp -a -- canonical-src/chess/quantum_krk/classical private-src/chess/quantum_krk/
+          echo 'Private canonical KRK-v1 staged for cross-reference checks (no publication).'
+
       # These checks read private theory sources from runner-local private-src.
       # Public workflow source contains only generic test/compile invocations.
       - name: Check private KRK geometry, D4 symmetry and adversarial policy
@@ -135,6 +156,8 @@ jobs:
             test_krk_dihedral_record.py
             test_geometric_progress.py
             test_uniform_rank_reference.py
+            test_canonical_factored_step.py
+            test_canonical_dihedral_record.py
           )
           for test_file in "${tests[@]}"; do
             if ! timeout 600s python -B -m unittest discover \
@@ -236,7 +259,7 @@ jobs:
       - name: Remove temporary private checkout and reports
         if: always()
         run: |
-          rm -rf -- "$GITHUB_WORKSPACE/private-src"
+          rm -rf -- "$GITHUB_WORKSPACE/private-src" "$GITHUB_WORKSPACE/canonical-src"
           rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.* \
             "$RUNNER_TEMP"/private-krk.* "$RUNNER_TEMP"/private-qiskit-krk.* "$RUNNER_TEMP"/private-krk-lean.*
           echo 'Ephemeral checkout cleanup complete. No private files committed or uploaded.'
