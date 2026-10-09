@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -260,7 +263,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'uniform-krk') == 'web-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
