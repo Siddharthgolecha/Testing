@@ -6,7 +6,7 @@ interface test, NOT a full 94-qubit KRK experiment.
 """
 import math
 import unittest
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import MCXGate
 from qiskit.quantum_info import Statevector
 from qiskit_aer import AerSimulator
@@ -110,8 +110,11 @@ class SCHIExporterTest(unittest.TestCase):
             self.assertAlmostEqual(probability, math.sin((2*k+1)*theta)**2, places=8)
             # All paths clean flags and parity scratch.
             self.assertLess(sum(abs(sv.data[j])**2 for j in range(32,128)), 1e-10)
-        result = AerSimulator(method="matrix_product_state").run(
-            grover(2, measure=True), shots=4096, seed_simulator=101
+        simulator = AerSimulator(method="matrix_product_state")
+        compiled = transpile(grover(2, measure=True), simulator, optimization_level=0)
+        self.assertFalse(any(op.name == "mcx" for op in compiled.data))
+        result = simulator.run(
+            compiled, shots=4096, seed_simulator=101
         ).result()
         counts = result.get_counts()
         actual = sum(n for state, n in counts.items() if int(state, 2) in winning)/4096
