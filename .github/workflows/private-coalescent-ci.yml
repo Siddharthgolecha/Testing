@@ -313,6 +313,7 @@ jobs:
             exit 1
           fi
           if ! timeout 600s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_compact19.py' -q >"$log_file" 2>&1; then
+            grep -E '^COMPACT_(STAGE|DIAG)_' "$log_file" | tail -8 || true
             echo '::error::KRK compact 19-bit Aer proposal regression failed (private logs suppressed).'
             exit 1
           fi
