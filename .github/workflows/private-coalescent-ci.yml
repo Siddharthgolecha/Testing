@@ -301,6 +301,11 @@ jobs:
             echo '::error::Uniform 19-bit KRK gate test failed or timed out (private logs suppressed).'
             exit 1
           fi
+          if ! timeout 1500s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_uniform19_aer.py' -q >"$log_file" 2>&1; then
+            echo '::error::Uniform KRK full Qiskit Aer execution failed or timed out (traceback suppressed).'
+            exit 1
+          fi
+          echo 'Universal KRK quantum circuit: actual Qiskit Aer basis-state run PASS.'
           echo 'Uniform 19-bit board-controlled transition: PASS (private test output suppressed).'
 
       - name: Remove temporary private checkout and reports
