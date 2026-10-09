@@ -281,6 +281,10 @@ jobs:
             echo '::error::KRK Qiskit Aer circuit tests failed or timed out. Logs withheld from public runner.'
             exit 1
           fi
+          if ! timeout 2400s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_compact19.py' -q >"$log_file" 2>&1; then
+            echo '::error::Compact 19-qubit KRK Qiskit test failed or timed out. Logs withheld.'
+            exit 1
+          fi
           echo 'Private playable KRK web and Qiskit Aer tests: PASS (details suppressed).'
 
       - name: Remove temporary private checkout and reports
