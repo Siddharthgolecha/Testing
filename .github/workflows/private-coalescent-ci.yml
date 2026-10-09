@@ -350,9 +350,22 @@ jobs:
           fi
           echo 'Black optimized and broad multi-position reversible Qiskit parity tests PASS.'
           if ! timeout 420s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_web.py' -q >"$log_file" 2>&1; then
-            echo '::error::Black uniform geometry vs browser Aer cross-check failed.'
+            # Only stable unittest test names / error class; keep private paths and traces hidden.
+            grep -E '^(FAIL|ERROR): test_|^(AssertionError|ValueError|TypeError|AttributeError|KeyError|RuntimeError|NameError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -8 || true
+            echo '::error::Shot-based web Qiskit integration regression failed.'
             exit 1
           fi
+          if ! timeout 900s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_black_delta19.py' -q >"$log_file" 2>&1; then
+            echo '::error::66-qubit Black delta oracle exhaustive geometry test failed.'
+            exit 1
+          fi
+          echo 'Black 66-logical-qubit delta oracle exact parity PASS.'
+          if ! timeout 900s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_black_delta19_aer.py' -q >"$log_file" 2>&1; then
+            grep '^DELTA_AER_STAGE_' "$log_file" | tail -8 || true
+            echo '::error::66-qubit delta oracle shot-based Qiskit Aer test failed.'
+            exit 1
+          fi
+          echo 'Black delta-oracle Aer shot-based capture/nocapture PASS.'
           echo 'Black compressed 82-logical-qubit oracle + shot-based browser checks PASS.'
 
 
