@@ -506,6 +506,7 @@ jobs:
             echo '::error::19-qubit orbital rook-hopping quantum regression failed.'
             exit 1
           fi
+          grep '^ORBITAL_COST ' "$log_file" | tail -2 || true
           echo 'Controlled 19-qubit orbital SWAP/XY Aer and exhaustive occupancy parity: PASS.'
 
 
