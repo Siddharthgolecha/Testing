@@ -327,7 +327,7 @@ jobs:
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-trie-verify.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
-          for test_file in test_krk_trie_qrom.py test_complete_trie_d4.py; do
+          for test_file in test_krk_trie_qrom.py test_complete_trie_d4.py test_complete_trie_toffoli.py; do
             if ! timeout 600s python -B -m unittest discover \
                 -s research/chess/theory -p "$test_file" -q >"$log_file" 2>&1; then
               echo '::error::Full private D4 trie controller regression failed; details withheld.'
