@@ -488,7 +488,7 @@ jobs:
             echo '::error::Cumulative 19-qubit Qiskit Aer history test failed (private traces suppressed).'
             exit 1
           fi
-          echo 'Cumulative 19-qubit gate history and capture Aer: PASS.'
+          echo 'Cumulative 19-qubit gate history, standalone module and capture Aer: PASS.'
           if ! timeout 420s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_timeline_web.py' -q >"$log_file" 2>&1; then
             grep -E '^(FAIL|ERROR): test_' "$log_file" | tail -6 || true
             echo '::error::19-qubit browser timeline/capture HTTP test failed (private traces suppressed).'
