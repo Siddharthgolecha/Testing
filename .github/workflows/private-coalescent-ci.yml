@@ -257,6 +257,16 @@ jobs:
           fi
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
+      - name: Install Qiskit mpl circuit drawer dependencies
+        if: ${{ inputs.suite == 'web-krk' }}
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! python -m pip install 'matplotlib>=3.8,<4' 'pylatexenc>=2.10,<3' >"$log_file" 2>&1; then
+            echo '::error::Public Qiskit drawing dependencies failed to install.'
+            exit 1
+          fi
+
       - name: Run playable KRK browser backend and Qiskit Aer circuit tests privately
         if: ${{ inputs.suite == 'web-krk' }}
         working-directory: private-src
