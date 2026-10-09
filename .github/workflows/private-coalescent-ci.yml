@@ -57,13 +57,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' || inputs.suite == 'theory-krk' }}
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -99,7 +99,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' || inputs.suite == 'theory-lean' || inputs.suite == 'theory-lean' }}
+        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' || inputs.suite == 'theory-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
