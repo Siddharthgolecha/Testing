@@ -317,7 +317,7 @@ jobs:
             echo '::error::KRK compact 19-bit Aer proposal regression failed (private logs suppressed).'
             exit 1
           fi
-          echo 'Uniform 19-bit board-controlled transition: PASS (private test output suppressed).'
+          echo 'Uniform 19-bit oracle, coherent Aer check and browser regression: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
