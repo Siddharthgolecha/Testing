@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -57,13 +60,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
+        if: ${{ github.event_name == 'push' || inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
+        if: ${{ github.event_name == 'push' || inputs.suite == 'schi-next' || inputs.suite == 'both' || inputs.suite == 'theory-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -77,7 +80,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/coalescent-research
-          ref: ${{ inputs.source_ref }}
+          ref: ${{ github.event_name == 'push' && '798891e9a3a271bc56fdc659c2e5ee50c9c65962' || inputs.source_ref }}
           path: private-src
           ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
           ssh-strict: true
@@ -87,12 +90,14 @@ jobs:
           lfs: false
 
       - name: Run SCHI-Next tests without exposing private tracebacks
-        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        if: ${{ github.event_name == 'push' || inputs.suite == 'schi-next' || inputs.suite == 'both' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-python.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
-          if ! timeout 2400s python -B -m unittest discover -s chess/experiments/schi_next -p 'test_*.py' -q >"$log_file" 2>&1; then
+          test_pattern='test_*.py'
+          if [[ "$GITHUB_EVENT_NAME" == 'push' ]]; then test_pattern='test_native_qiskit.py'; fi
+          if ! timeout 2400s python -B -m unittest discover -s chess/experiments/schi_next -p "$test_pattern" -q >"$log_file" 2>&1; then
             echo '::error::Private SCHI-Next tests failed or timed out. Full output intentionally withheld from public logs.'
             exit 1
           fi
