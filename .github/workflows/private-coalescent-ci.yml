@@ -20,6 +20,7 @@ on:
           - both
           - theory-krk
           - theory-lean
+          - theory-controller
           - web-krk
           - uniform-krk
         default: schi-next
@@ -59,13 +60,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'uniform-krk') == 'schi-next' || (inputs.suite || 'uniform-krk') == 'both' || (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'schi-next' || (inputs.suite || 'uniform-krk') == 'both' || (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'theory-controller' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'uniform-krk') == 'schi-next' || (inputs.suite || 'uniform-krk') == 'both' || (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'schi-next' || (inputs.suite || 'uniform-krk') == 'both' || (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'theory-controller' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -316,10 +317,86 @@ jobs:
           fi
           echo 'Compact controlled X Toffoli decomposition, uniform oracle and web: PASS.'
 
+
+      - name: Verify full private D4 trie controller against offline-winning KRK policy
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-controller' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-trie-verify.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          for test_file in test_krk_trie_qrom.py test_complete_trie_d4.py; do
+            if ! timeout 600s python -B -m unittest discover \
+                -s research/chess/theory -p "$test_file" -q >"$log_file" 2>&1; then
+              echo '::error::Full private D4 trie controller regression failed; details withheld.'
+              exit 1
+            fi
+          done
+          echo 'Private D4 trie policy and full adversarial regression: PASS.'
+
+      - name: Construct and transpile complete private D4 trie controller in Qiskit
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-controller' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-trie-qiskit.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 1200s python -B - <<'PY' >"$log_file" 2>&1
+          import sys
+          sys.path.insert(0,"research/chess/theory")
+          from qiskit import QuantumCircuit,transpile
+          from qiskit_aer import AerSimulator
+          from krk_trie_d4_complete import complete_trie
+          from geometric_progress import white_states
+          from uniform_step import encode_state
+          src=complete_trie()
+          assert src.total_qubits==118
+          assert len(src.gates)==7091
+          width=src.total_qubits+7
+          circuit=QuantumCircuit(width)
+          for gate in src.gates:
+              k=len(gate.controls)
+              flips=[q for q,b in zip(gate.controls,gate.expected) if not b]
+              for q in flips:circuit.x(q)
+              if k==0:circuit.x(gate.target)
+              elif k==1:circuit.cx(gate.controls[0],gate.target)
+              elif k==2:circuit.ccx(*gate.controls,gate.target)
+              else:
+                  anc=list(range(src.total_qubits,src.total_qubits+k-2))
+                  chain=[(gate.controls[0],gate.controls[1],anc[0])]
+                  chain += [(anc[i-2],gate.controls[i],anc[i-1]) for i in range(2,k-1)]
+                  for a,b,t in chain:circuit.ccx(a,b,t)
+                  circuit.ccx(anc[-1],gate.controls[-1],gate.target)
+                  for a,b,t in reversed(chain):circuit.ccx(a,b,t)
+              for q in flips:circuit.x(q)
+          assert circuit.num_qubits==125
+          basis=transpile(circuit,basis_gates=['x','sx','rz','cx'],optimization_level=0)
+          assert basis.num_qubits==125 and basis.depth()>0
+          assert basis.count_ops().get('cx',0)>0
+          assert set(basis.count_ops()).issubset({'x','sx','rz','cx'})
+          # Basis-only circuit simulation; no 2**125 dense statevector allocation.
+          state=white_states()[0]
+          expected,_=src.run_basis(state)
+          qc=QuantumCircuit(width,5)
+          inp=encode_state(state)
+          for q in range(19):
+              if inp>>q&1:qc.x(q)
+          qc.compose(circuit,inplace=True)
+          qc.measure([19,20,21,22,23],range(5))
+          sim=AerSimulator(method='matrix_product_state',max_parallel_threads=2)
+          observed=sim.run(qc,shots=1,seed_simulator=20261009).result()
+          assert observed.success
+          assert observed.get_counts()=={format(expected,'05b'):1}
+          PY
+          then
+            echo '::error::Complete private D4 trie Qiskit transpilation or Aer fixture failed or timed out; details withheld.'
+            exit 1
+          fi
+          echo 'Complete private D4 trie: Qiskit transpilation and Aer basis fixture PASS.'
+
       - name: Remove temporary private checkout and reports
         if: always()
         run: |
           rm -rf -- "$GITHUB_WORKSPACE/private-src" "$GITHUB_WORKSPACE/canonical-src"
           rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.* \
-            "$RUNNER_TEMP"/private-krk.* "$RUNNER_TEMP"/private-qiskit-krk.* "$RUNNER_TEMP"/private-krk-lean.*
+            "$RUNNER_TEMP"/private-krk.* "$RUNNER_TEMP"/private-qiskit-krk.* "$RUNNER_TEMP"/private-krk-lean.* \
+            "$RUNNER_TEMP"/private-trie-verify.* "$RUNNER_TEMP"/private-trie-qiskit.*
           echo 'Ephemeral checkout cleanup complete. No private files committed or uploaded.'
