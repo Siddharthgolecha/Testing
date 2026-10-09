@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -350,7 +353,7 @@ jobs:
             echo '::error::Black uniform geometry vs browser Aer cross-check failed.'
             exit 1
           fi
-          echo 'Human-vs-human and human-vs-computer Black HTTP gameplay checks PASS.'
+          echo 'Black compressed 82-logical-qubit oracle + shot-based browser checks PASS.'
 
 
       - name: Verify full private D4 trie controller against offline-winning KRK policy
