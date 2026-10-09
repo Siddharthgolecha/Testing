@@ -1,6 +1,6 @@
 # Testing — public Qiskit + Lean CI sandbox
 
-This repository provides **independent, reproducible smoke tests** for Qiskit (Python) and Lean 4 + Mathlib via GitHub Actions. It does not contain or checkout the private `coalescent-research` repository.
+This repository provides **independent, reproducible smoke tests** for Qiskit (Python) and Lean 4 + Mathlib via GitHub Actions. The default smoke workflow never checks out private code. A **separate, manually dispatched** workflow can temporarily checkout `coalescent-research` on an ephemeral runner with a dedicated read-only SSH deploy key, without committing it here.
 
 ## Toolchains
 
