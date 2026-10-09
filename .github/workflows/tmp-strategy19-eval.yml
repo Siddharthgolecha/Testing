@@ -1,0 +1,76 @@
+name: Temporary KRK Grover strategy evaluation (remove after test)
+on:
+  push:
+    paths:
+      - .github/workflows/tmp-strategy19-eval.yml
+permissions:
+  contents: read
+concurrency:
+  group: temp-strategy19-krk
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Public Testing toolchain
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          path: tooling
+      - name: Python Qiskit setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Public dependencies
+        run: |
+          python -m pip install -q -r tooling/requirements.txt
+          python -m pip install -q 'matplotlib>=3.8,<4' 'pylatexenc>=2.10,<3'
+      - name: Private read-only checkout (ephemeral runner only)
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: 6ce67a6ba850c6e04bd3d0867114135832a1caa5
+          path: private-src
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+          lfs: false
+          submodules: false
+      - name: Actual Aer optimal-move amplification tests
+        working-directory: private-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp "$RUNNER_TEMP/strategy-verify.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 900s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_strategic19.py' -v >"$log_file" 2>&1; then
+            grep -E '^(AssertionError|TypeError|ValueError|RuntimeError|ImportError|SyntaxError|AttributeError|IndexError|ModuleNotFoundError):' "$log_file" | sed -E 's/:.*/ /' | tail -6 || true
+            echo '::error::Private Grover strategy tests FAILED; details withheld'
+            exit 1
+          fi
+          grep '^STRATEGY_' "$log_file" | tail -6 || true
+          echo 'Private Grover strategy Qiskit Aer tests: PASS'
+      - name: Existing compact circuit and browser regression
+        working-directory: private-src
+        shell: bash
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp "$RUNNER_TEMP/strategy-web.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          for suite in "chess/experiments/piece_square_play:test_compact19.py" "chess/experiments/piece_square_play/web:test_web.py"; do
+            dir="${suite%%:*}"; test_file="${suite#*:}"
+            if ! timeout 900s python -B -m unittest discover -s "$dir" -p "$test_file" -q >"$log_file" 2>&1; then
+              grep -E '^(AssertionError|TypeError|ValueError|RuntimeError|ImportError|SyntaxError|AttributeError|IndexError|ModuleNotFoundError):' "$log_file" | sed -E 's/:.*/ /' | tail -6 || true
+              echo "::error::Private regression suite FAILED (${test_file}); details withheld"
+              exit 1
+            fi
+            echo "Private regression suite ${test_file}: PASS"
+          done
+      - name: Cleanup ephemeral private sources
+        if: always()
+        shell: bash
+        run: |
+          rm -rf private-src
+          rm -f "$RUNNER_TEMP"/strategy-verify.* "$RUNNER_TEMP"/strategy-web.*
+          echo 'Private checkout removed; no source committed to public Testing.'
