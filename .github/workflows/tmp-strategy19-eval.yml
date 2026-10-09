@@ -70,6 +70,36 @@ jobs:
             gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" -f state=failure -f context="strategy19/isolated-http-fail"
             exit 1
           fi
+      - name: Isolate regression tests by independent execution
+        id: web_cases
+        working-directory: private-src/chess/experiments/piece_square_play/web
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          log_file="$(mktemp "$RUNNER_TEMP/webcase.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          cases=(
+            test_human_white_move_is_calculated_from_uniform_gate_network
+            test_initial_state_valid_and_black_illegal_rejected
+            test_measured_shots_are_exposed_as_exact_count_histogram
+            test_new_game_and_measured_white_and_black
+            test_protected_rook_cannot_be_captured
+            test_real_aer_white_move_and_actual_qiskit_mpl_png
+            test_real_rook_capture_ends_game_and_prevents_further_moves
+            test_reversible_gate_oracle_rejects_invalid_white_action
+            test_shot_validation_precedes_backend_execution
+            test_shots_sample_only_measured_outcomes
+            test_terminal_checkmate_and_stalemate_results
+          )
+          for i in "${!cases[@]}"; do
+            if ! timeout 240s python -B -m unittest "test_web.GameHTTPTests.${cases[$i]}" -q >"$log_file" 2>&1; then
+              gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" -f state=failure -f context="strategy19/webcase-$i-fail"
+              exit 1
+            fi
+            gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" -f state=success -f context="strategy19/webcase-$i-pass"
+          done
       - name: Existing compact circuit and browser regression
         id: regression
         working-directory: private-src
