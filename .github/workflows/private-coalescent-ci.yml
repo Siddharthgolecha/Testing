@@ -371,7 +371,7 @@ jobs:
             exit 1
           fi
           echo 'Hardware-compatible SamplerV2/Aer counts contract PASS.'
-          echo 'Black compressed 82-logical-qubit oracle + shot-based browser checks PASS.'
+          echo 'Shot-based browser and optional 66-qubit uniform Black Aer gameplay PASS.'
 
 
       - name: Verify full private D4 trie controller against offline-winning KRK policy
