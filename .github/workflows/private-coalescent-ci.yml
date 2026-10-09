@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -24,6 +27,7 @@ on:
           - web-krk
           - uniform-krk
           - uniform-black-krk
+          - materialized-krk
         default: schi-next
 
 permissions:
@@ -61,13 +65,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'schi-next' || (inputs.suite || 'uniform-black-krk') == 'both' || (inputs.suite || 'uniform-black-krk') == 'theory-krk' || (inputs.suite || 'uniform-black-krk') == 'theory-controller' || (inputs.suite || 'uniform-black-krk') == 'web-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-black-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-krk' || (inputs.suite || 'materialized-krk') == 'theory-controller' || (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'schi-next' || (inputs.suite || 'uniform-black-krk') == 'both' || (inputs.suite || 'uniform-black-krk') == 'theory-krk' || (inputs.suite || 'uniform-black-krk') == 'theory-controller' || (inputs.suite || 'uniform-black-krk') == 'web-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-black-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-krk' || (inputs.suite || 'materialized-krk') == 'theory-controller' || (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -91,7 +95,7 @@ jobs:
           lfs: false
 
       - name: Run SCHI-Next tests without exposing private tracebacks
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'schi-next' || (inputs.suite || 'uniform-black-krk') == 'both' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-python.XXXXXX")"
@@ -103,7 +107,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'lean-smoke' || (inputs.suite || 'uniform-black-krk') == 'both' || (inputs.suite || 'uniform-black-krk') == 'theory-lean' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'lean-smoke' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
@@ -114,7 +118,7 @@ jobs:
           use-github-cache: 'false'
 
       - name: Build private Lean smoke theorem (quiet public logs)
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'lean-smoke' || (inputs.suite || 'uniform-black-krk') == 'both' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'lean-smoke' || (inputs.suite || 'materialized-krk') == 'both' }}
         working-directory: private-src/lean-proofs
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-lean.XXXXXX")"
@@ -127,7 +131,7 @@ jobs:
 
 
       - name: Checkout merged KRK-v1 canonical source (runner-local, theory only)
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/coalescent-research
@@ -141,7 +145,7 @@ jobs:
           lfs: false
 
       - name: Stage canonical KRK semantics for cross-ref tests, without a commit
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
         run: |
           mkdir -p -- private-src/chess/quantum_krk
           cp -a -- canonical-src/chess/quantum_krk/classical private-src/chess/quantum_krk/
@@ -150,7 +154,7 @@ jobs:
       # These checks read private theory sources from runner-local private-src.
       # Public workflow source contains only generic test/compile invocations.
       - name: Check private KRK geometry, D4 symmetry and adversarial policy
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-krk.XXXXXX")"
@@ -173,7 +177,7 @@ jobs:
           echo 'Private KRK geometry / D4 / rank reference: PASS (output suppressed).'
 
       - name: Compile complete private directional KRK step with Qiskit
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-qiskit-krk.XXXXXX")"
@@ -237,7 +241,7 @@ jobs:
           echo 'Private complete KRK Qiskit transpilation and one Aer basis fixture: PASS.'
 
       - name: Compile dedicated private QuantumChess Lean theory modules
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-lean' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-lean' }}
         working-directory: private-src/lean-proofs
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-krk-lean.XXXXXX")"
@@ -261,7 +265,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'web-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-krk' || (inputs.suite || 'uniform-black-krk') == 'uniform-black-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -271,7 +275,7 @@ jobs:
           fi
 
       - name: Run playable KRK browser backend and Qiskit Aer circuit tests privately
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'web-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'web-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-web-krk.XXXXXX")"
@@ -291,7 +295,7 @@ jobs:
           echo 'Private playable KRK web and Qiskit Aer tests: PASS (details suppressed).'
 
       - name: Validate universal KRK transition gates (private, board-controlled)
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'uniform-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-uniform-krk.XXXXXX")"
@@ -325,7 +329,7 @@ jobs:
 
 
       - name: Verify board-controlled Black geometry oracle and Qiskit Aer
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'uniform-black-krk' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'uniform-black-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-uniform-black.XXXXXX")"
@@ -371,8 +375,27 @@ jobs:
           echo 'Shot-based browser and optional 66-qubit uniform Black Aer gameplay PASS.'
 
 
+      - name: Verify coherent materialized KRK two-ply quantum transitions
+        if: ${{ (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-materialized.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 1200s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_black_materialize19.py' -q >"$log_file" 2>&1; then
+            echo '::error::Coherent 19-bit Black materializer parity or clean-work tests failed.'
+            exit 1
+          fi
+          echo 'Materialized Black successor exhaustive KRK + two-ply basis parity PASS.'
+          if ! timeout 1300s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_chained_two_ply19_aer.py' -q >"$log_file" 2>&1; then
+            grep -E '^TWO_PLY_(AER|SUPERPOSITION)_STAGE_' "$log_file" | tail -9 || true
+            grep -E '^(FAIL|ERROR): test_|^(AssertionError|TypeError|ValueError|NameError|AttributeError|IndexError|RuntimeError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -6 || true
+            echo '::error::Actual coherent Black-to-White Qiskit Aer two-ply test failed.'
+            exit 1
+          fi
+          echo 'Coherent Black-to-White two-ply (no interposed measurement) Aer PASS.'
+
       - name: Verify full private D4 trie controller against offline-winning KRK policy
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-controller' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-controller' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-trie-verify.XXXXXX")"
@@ -387,7 +410,7 @@ jobs:
           echo 'Private D4 trie policy and full adversarial regression: PASS.'
 
       - name: Construct and transpile complete private D4 trie controller in Qiskit
-        if: ${{ (inputs.suite || 'uniform-black-krk') == 'theory-controller' }}
+        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-controller' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-trie-qiskit.XXXXXX")"
