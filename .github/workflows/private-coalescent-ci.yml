@@ -1,4 +1,5 @@
 name: Private Coalescent CI (ephemeral)
+# Second scoped validation: timeline and HTTP rook slides.
 
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
