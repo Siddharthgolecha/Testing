@@ -1,0 +1,127 @@
+name: Private Coalescent CI (ephemeral)
+
+# Run only when a Testing maintainer explicitly chooses Run workflow.
+# Never run private-code jobs on pull_request, pull_request_target, or forks.
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: 'Private coalescent-research branch, tag or full SHA (this ref is public run metadata)'
+        required: true
+        type: string
+        default: research/schi-next-reversible-step
+      suite:
+        description: 'Select a finite research validation suite'
+        required: true
+        type: choice
+        options:
+          - schi-next
+          - lean-smoke
+          - both
+        default: schi-next
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ephemeral-private-research-runner
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Read-only private checkout / public-safe results
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults:
+      run:
+        shell: bash
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Checkout public Testing toolchain (no credentials persisted)
+        uses: actions/checkout@v4
+        with:
+          path: tooling
+          persist-credentials: false
+
+      - name: Validate private read-only deploy key is configured
+        env:
+          KEY: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+        run: |
+          if [[ -z "$KEY" ]]; then
+            echo '::error::Missing Testing repository secret COALESCENT_DEPLOY_KEY. See README (read-only deploy key setup).'
+            exit 1
+          fi
+
+      - name: Install public Qiskit dependencies (no private source yet)
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pinned public Python dependencies without caching output
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! python -m pip install --disable-pip-version-check -r tooling/requirements.txt >"$log_file" 2>&1; then
+            echo '::error::Public Qiskit dependencies failed to install.'
+            exit 1
+          fi
+          echo 'Pinned public Qiskit dependencies installed.'
+
+      - name: Checkout private research repository (runner-local only)
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: ${{ inputs.source_ref }}
+          path: private-src
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          ssh-strict: true
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+
+      - name: Run SCHI-Next tests without exposing private tracebacks
+        if: ${{ inputs.suite == 'schi-next' || inputs.suite == 'both' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-python.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 2400s python -B -m unittest discover -s chess/experiments/schi_next -p 'test_*.py' -q >"$log_file" 2>&1; then
+            echo '::error::Private SCHI-Next tests failed or timed out. Full output intentionally withheld from public logs.'
+            exit 1
+          fi
+          echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
+
+      - name: Configure Lean 4 and Mathlib without public build cache
+        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' }}
+        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
+        with:
+          lake-package-directory: private-src/lean-proofs
+          auto-config: 'false'
+          build: 'false'
+          leanchecker: false
+          use-mathlib-cache: 'true'
+          use-github-cache: 'false'
+
+      - name: Build private Lean smoke theorem (quiet public logs)
+        if: ${{ inputs.suite == 'lean-smoke' || inputs.suite == 'both' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-lean.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 2400s lake build RecordAlgebra.Kernel.FiniteModel >"$log_file" 2>&1; then
+            echo '::error::Private Lean build failed or timed out. Proof output intentionally withheld from public logs.'
+            exit 1
+          fi
+          echo 'Private Lean smoke target: PASS (private output suppressed).'
+
+      - name: Remove temporary private checkout and reports
+        if: always()
+        run: |
+          rm -rf -- "$GITHUB_WORKSPACE/private-src"
+          rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.*
+          echo 'Ephemeral checkout cleanup complete. No private files committed or uploaded.'
