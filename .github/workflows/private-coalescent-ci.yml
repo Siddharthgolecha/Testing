@@ -507,7 +507,7 @@ jobs:
             exit 1
           fi
           grep '^ORBITAL_COST ' "$log_file" | tail -2 || true
-          echo 'Controlled 19-qubit orbital SWAP/XY Aer and exhaustive occupancy parity: PASS.'
+          echo 'Optimized orbital 19-qubit SWAP/XY, superposed kings and CX-cost: PASS.'
 
 
       - name: Remove temporary private checkout and reports
