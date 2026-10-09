@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -25,6 +28,7 @@ on:
           - uniform-krk
           - uniform-black-krk
           - materialized-krk
+          - timeline-19
         default: schi-next
 
 permissions:
@@ -62,13 +66,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-krk' || (inputs.suite || 'materialized-krk') == 'theory-controller' || (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-krk' || (inputs.suite || 'materialized-krk') == 'theory-controller' || (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -82,7 +86,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/coalescent-research
-          ref: ${{ (inputs.source_ref || 'experiment/krk-19q-occupancy-permutation') }}
+          ref: ${{ (inputs.source_ref || 'feature/krk-19q-circuit-timeline') }}
           path: private-src
           ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
           ssh-strict: true
@@ -92,7 +96,7 @@ jobs:
           lfs: false
 
       - name: Run SCHI-Next tests without exposing private tracebacks
-        if: ${{ (inputs.suite || 'materialized-krk') == 'schi-next' || (inputs.suite || 'materialized-krk') == 'both' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-python.XXXXXX")"
@@ -104,7 +108,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'materialized-krk') == 'lean-smoke' || (inputs.suite || 'materialized-krk') == 'both' || (inputs.suite || 'materialized-krk') == 'theory-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
@@ -115,7 +119,7 @@ jobs:
           use-github-cache: 'false'
 
       - name: Build private Lean smoke theorem (quiet public logs)
-        if: ${{ (inputs.suite || 'materialized-krk') == 'lean-smoke' || (inputs.suite || 'materialized-krk') == 'both' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' }}
         working-directory: private-src/lean-proofs
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-lean.XXXXXX")"
@@ -128,7 +132,7 @@ jobs:
 
 
       - name: Checkout merged KRK-v1 canonical source (runner-local, theory only)
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-krk' }}
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/coalescent-research
@@ -142,7 +146,7 @@ jobs:
           lfs: false
 
       - name: Stage canonical KRK semantics for cross-ref tests, without a commit
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-krk' }}
         run: |
           mkdir -p -- private-src/chess/quantum_krk
           cp -a -- canonical-src/chess/quantum_krk/classical private-src/chess/quantum_krk/
@@ -151,7 +155,7 @@ jobs:
       # These checks read private theory sources from runner-local private-src.
       # Public workflow source contains only generic test/compile invocations.
       - name: Check private KRK geometry, D4 symmetry and adversarial policy
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-krk.XXXXXX")"
@@ -174,7 +178,7 @@ jobs:
           echo 'Private KRK geometry / D4 / rank reference: PASS (output suppressed).'
 
       - name: Compile complete private directional KRK step with Qiskit
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-qiskit-krk.XXXXXX")"
@@ -238,7 +242,7 @@ jobs:
           echo 'Private complete KRK Qiskit transpilation and one Aer basis fixture: PASS.'
 
       - name: Compile dedicated private QuantumChess Lean theory modules
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-lean' }}
         working-directory: private-src/lean-proofs
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-krk-lean.XXXXXX")"
@@ -262,7 +266,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'materialized-krk') == 'web-krk' || (inputs.suite || 'materialized-krk') == 'uniform-krk' || (inputs.suite || 'materialized-krk') == 'uniform-black-krk' || (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -272,7 +276,7 @@ jobs:
           fi
 
       - name: Run playable KRK browser backend and Qiskit Aer circuit tests privately
-        if: ${{ (inputs.suite || 'materialized-krk') == 'web-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-web-krk.XXXXXX")"
@@ -292,7 +296,7 @@ jobs:
           echo 'Private playable KRK web and Qiskit Aer tests: PASS (details suppressed).'
 
       - name: Validate universal KRK transition gates (private, board-controlled)
-        if: ${{ (inputs.suite || 'materialized-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'uniform-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-uniform-krk.XXXXXX")"
@@ -326,7 +330,7 @@ jobs:
 
 
       - name: Verify board-controlled Black geometry oracle and Qiskit Aer
-        if: ${{ (inputs.suite || 'materialized-krk') == 'uniform-black-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'uniform-black-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-uniform-black.XXXXXX")"
@@ -373,7 +377,7 @@ jobs:
 
 
       - name: Verify coherent materialized KRK two-ply quantum transitions
-        if: ${{ (inputs.suite || 'materialized-krk') == 'materialized-krk' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-materialized.XXXXXX")"
@@ -400,7 +404,7 @@ jobs:
 
 
       - name: Verify full private D4 trie controller against offline-winning KRK policy
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-controller' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-controller' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-trie-verify.XXXXXX")"
@@ -415,7 +419,7 @@ jobs:
           echo 'Private D4 trie policy and full adversarial regression: PASS.'
 
       - name: Construct and transpile complete private D4 trie controller in Qiskit
-        if: ${{ (inputs.suite || 'materialized-krk') == 'theory-controller' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'theory-controller' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-trie-qiskit.XXXXXX")"
@@ -472,6 +476,31 @@ jobs:
             exit 1
           fi
           echo 'Complete private D4 trie: Qiskit transpilation and Aer basis fixture PASS.'
+
+      - name: Verify 19-qubit cumulative chess history through Aer and HTTP
+        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-timeline19.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 300s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_timeline19.py' -q >"$log_file" 2>&1; then
+            grep -E '^(FAIL|ERROR): test_' "$log_file" | tail -6 || true
+            echo '::error::Cumulative 19-qubit Qiskit Aer history test failed (private traces suppressed).'
+            exit 1
+          fi
+          echo 'Cumulative 19-qubit gate history and capture Aer: PASS.'
+          if ! timeout 420s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_timeline_web.py' -q >"$log_file" 2>&1; then
+            grep -E '^(FAIL|ERROR): test_' "$log_file" | tail -6 || true
+            echo '::error::19-qubit browser timeline/capture HTTP test failed (private traces suppressed).'
+            exit 1
+          fi
+          echo 'Browser 19-qubit turn-by-turn timeline and rook capture: PASS.'
+          if ! timeout 420s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_web.py' -q >"$log_file" 2>&1; then
+            grep -E '^(FAIL|ERROR): test_' "$log_file" | tail -6 || true
+            echo '::error::Legacy chess web compatibility tests failed (private traces suppressed).'
+            exit 1
+          fi
+          echo 'Existing chess web API compatibility: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
