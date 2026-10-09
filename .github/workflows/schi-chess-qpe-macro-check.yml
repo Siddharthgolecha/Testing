@@ -1,0 +1,39 @@
+name: SCHI Chess-QPE Macro Check (temporary)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/schi-chess-qpe-macro-check.yml'
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: 02211ba0946f83e034c8ad369b19ba986e3c38d5
+          path: private-src
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+      - name: Check exact canonical chess policy QPE schedule and budget
+        working-directory: private-src
+        run: |
+          out="$(mktemp "$RUNNER_TEMP/qpe-private.XXXX")"
+          trap 'rm -f "$out"' EXIT
+          for test in test_chess_qpe_budget.py test_qpe_chess_schedule.py; do
+            if ! timeout 600s python3 -B -m unittest discover -s chess/experiments/schi_next -p "$test" -q >"$out" 2>&1; then
+              echo "::error::Private test failed: $test"
+              grep -E '^(FAIL:|ERROR:|FAILED|AssertionError|TypeError|ValueError|ImportError)' "$out" | head -12 || true
+              exit 1
+            fi
+            echo "$test PASS"
+          done
+      - name: Purge read-only private checkout
+        if: always()
+        run: rm -rf "$GITHUB_WORKSPACE/private-src" "$RUNNER_TEMP"/qpe-private.*
