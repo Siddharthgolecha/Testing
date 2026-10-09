@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -306,6 +309,11 @@ jobs:
             exit 1
           fi
           echo 'Uniform KRK circuit (basis-only transpile): Qiskit Aer basis-state run PASS.'
+          if ! timeout 300s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_black19.py' -q >"$log_file" 2>&1; then
+            echo '::error::Black KRK Aer capture/noncapture circuit regression failed; details suppressed.'
+            exit 1
+          fi
+          echo 'Black Qiskit Aer: ordinary move + rook capture terminal sink PASS.'
           if ! timeout 240s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_web.py' -q >"$log_file" 2>&1; then
             echo '::error::KRK browser integration and human move tests failed (private logs suppressed).'
             exit 1
