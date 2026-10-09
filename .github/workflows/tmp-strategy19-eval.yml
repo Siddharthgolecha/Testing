@@ -59,18 +59,27 @@ jobs:
         id: regression
         working-directory: private-src
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           log_file="$(mktemp "$RUNNER_TEMP/strategy-web.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
           for suite in "chess/experiments/piece_square_play:test_compact19.py" "chess/experiments/piece_square_play/web:test_web.py"; do
             dir="${suite%%:*}"; test_file="${suite#*:}"
+            label=compact
+            if [[ "$test_file" == "test_web.py" ]]; then label=web; fi
             if ! timeout 900s python -B -m unittest discover -s "$dir" -p "$test_file" -q >"$log_file" 2>&1; then
-              grep -E '^(AssertionError|TypeError|ValueError|RuntimeError|ImportError|SyntaxError|AttributeError|IndexError|ModuleNotFoundError):' "$log_file" | sed -E 's/:.*/ /' | tail -6 || true
-              echo "::error::Private regression suite FAILED (${test_file}); details withheld"
+              err_kind=$(grep -E '^(AssertionError|TypeError|ValueError|RuntimeError|ImportError|SyntaxError|AttributeError|IndexError|ModuleNotFoundError|QiskitError|AerError):' "$log_file" | tail -1 | cut -d: -f1 || true)
+              if [[ -z "$err_kind" ]]; then err_kind=other; fi
+              gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" \
+                -f state=failure -f context="strategy19/$label-failed-$err_kind" \
+                -f description="Private regression failed; exception type only"
               exit 1
             fi
-            echo "Private regression suite ${test_file}: PASS"
+            gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" \
+              -f state=success -f context="strategy19/$label-passed" \
+              -f description="Private regression passed"
           done
       - name: Publish sanitized phase status (no private logs)
         if: always()
