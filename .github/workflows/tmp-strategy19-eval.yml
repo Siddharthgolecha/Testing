@@ -55,6 +55,21 @@ jobs:
           fi
           grep '^STRATEGY_' "$log_file" | tail -6 || true
           echo 'Private Grover strategy Qiskit Aer tests: PASS'
+      - name: Isolated Grover browser integration smoke test
+        id: grover_http
+        working-directory: private-src/chess/experiments/piece_square_play/web
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/grover-http.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if timeout 900s python -B -m unittest test_web.GameHTTPTests.test_tablebase_grover_white_http_path -q >"$log_file" 2>&1; then
+            gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" -f state=success -f context="strategy19/isolated-http-pass"
+          else
+            gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" -f state=failure -f context="strategy19/isolated-http-fail"
+            exit 1
+          fi
       - name: Existing compact circuit and browser regression
         id: regression
         working-directory: private-src
