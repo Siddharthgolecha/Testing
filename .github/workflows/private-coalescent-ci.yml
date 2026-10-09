@@ -348,7 +348,7 @@ jobs:
             echo '::error::Fast Black 19-qubit Aer and Toffoli cost regression failed.'
             exit 1
           fi
-          echo 'Factored Black controlled-move circuit Aer/cost tests PASS.'
+          echo 'Black optimized and broad multi-position reversible Qiskit parity tests PASS.'
           if ! timeout 420s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_web.py' -q >"$log_file" 2>&1; then
             echo '::error::Black uniform geometry vs browser Aer cross-check failed.'
             exit 1
