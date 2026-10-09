@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -390,6 +393,14 @@ jobs:
             exit 1
           fi
           echo 'Coherent Black-to-White two-ply (no interposed measurement) Aer PASS.'
+          if ! timeout 1200s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_chained_terminal19_aer.py' -q >"$log_file" 2>&1; then
+            grep '^TERMINAL_AER_STAGE_' "$log_file" | tail -12 || true
+            grep -E '^(FAIL|ERROR): test_|^(AssertionError|TypeError|ValueError|NameError|AttributeError|RuntimeError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\\1/' | tail -8 || true
+            echo '::error::Coherent capture STOP and noncapture Black-to-White Aer tests failed.'
+            exit 1
+          fi
+          echo 'Capture-aware coherent Black-to-White guard: real Aer PASS.'
+
 
       - name: Verify full private D4 trie controller against offline-winning KRK policy
         if: ${{ (inputs.suite || 'materialized-krk') == 'theory-controller' }}
