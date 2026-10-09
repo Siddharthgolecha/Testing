@@ -308,6 +308,14 @@ jobs:
             exit 1
           fi
           echo 'Uniform KRK circuit (basis-only transpile): Qiskit Aer basis-state run PASS.'
+          if ! timeout 240s python -B -m unittest discover -s chess/experiments/piece_square_play/web -p 'test_web.py' -q >"$log_file" 2>&1; then
+            echo '::error::KRK browser integration and human move tests failed (private logs suppressed).'
+            exit 1
+          fi
+          if ! timeout 600s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_compact19.py' -q >"$log_file" 2>&1; then
+            echo '::error::KRK compact 19-bit Aer proposal regression failed (private logs suppressed).'
+            exit 1
+          fi
           echo 'Uniform 19-bit board-controlled transition: PASS (private test output suppressed).'
 
       - name: Remove temporary private checkout and reports
