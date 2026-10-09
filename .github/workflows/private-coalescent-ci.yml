@@ -128,7 +128,7 @@ jobs:
 
 
       - name: Checkout merged KRK-v1 canonical source (runner-local, theory only)
-        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' }}
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/coalescent-research
@@ -142,7 +142,7 @@ jobs:
           lfs: false
 
       - name: Stage canonical KRK semantics for cross-ref tests, without a commit
-        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' }}
         run: |
           mkdir -p -- private-src/chess/quantum_krk
           cp -a -- canonical-src/chess/quantum_krk/classical private-src/chess/quantum_krk/
@@ -151,7 +151,7 @@ jobs:
       # These checks read private theory sources from runner-local private-src.
       # Public workflow source contains only generic test/compile invocations.
       - name: Check private KRK geometry, D4 symmetry and adversarial policy
-        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-krk.XXXXXX")"
@@ -174,7 +174,7 @@ jobs:
           echo 'Private KRK geometry / D4 / rank reference: PASS (output suppressed).'
 
       - name: Compile complete private directional KRK step with Qiskit
-        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' || (inputs.suite || 'uniform-krk') == 'web-krk' || (inputs.suite || 'uniform-krk') == 'uniform-krk' }}
+        if: ${{ (inputs.suite || 'uniform-krk') == 'theory-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-qiskit-krk.XXXXXX")"
