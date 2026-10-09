@@ -3,6 +3,9 @@ name: Private Coalescent CI (ephemeral)
 # Run only when a Testing maintainer explicitly chooses Run workflow.
 # Never run private-code jobs on pull_request, pull_request_target, or forks.
 on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/private-coalescent-ci.yml']
   workflow_dispatch:
     inputs:
       source_ref:
@@ -505,6 +508,14 @@ jobs:
           fi
           grep '^ORBITAL_COST ' "$log_file" | tail -2 || true
           echo 'Optimized orbital 19-qubit SWAP/XY, superposed kings and CX-cost: PASS.'
+          if ! timeout 1200s python -B -m unittest discover -s chess/experiments/piece_square_play -p 'test_rook_slide19.py' -q >"$log_file" 2>&1; then
+            grep -E '^(FAIL|ERROR): test_|^(AssertionError|ValueError|TypeError|ImportError|IndexError|RuntimeError):' "$log_file" | sed -E 's/^([A-Za-z]+Error):.*/\1/' | tail -10 || true
+            echo '::error::General 19-wire rook-slide / quantum interference regression failed.'
+            exit 1
+          fi
+          grep '^ROOK_SLIDE_COST ' "$log_file" | tail -1 || true
+          echo 'General rook rays, identity reranking, king safety, coherent 3-edge walk: PASS.'
+
 
 
       - name: Remove temporary private checkout and reports
