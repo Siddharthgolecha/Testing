@@ -377,7 +377,7 @@ jobs:
 
 
       - name: Verify coherent materialized KRK two-ply quantum transitions
-        if: ${{ (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'materialized-krk' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-materialized.XXXXXX")"
