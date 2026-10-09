@@ -5,6 +5,7 @@ on:
       - .github/workflows/tmp-strategy19-eval.yml
 permissions:
   contents: read
+  statuses: write
 concurrency:
   group: temp-strategy19-krk
   cancel-in-progress: false
@@ -67,6 +68,19 @@ jobs:
             fi
             echo "Private regression suite ${test_file}: PASS"
           done
+      - name: Publish only public-safe CI outcome as GitHub commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        shell: bash
+        run: |
+          outcome=failure
+          if [[ "$JOB_STATUS" == "success" ]]; then outcome=success; fi
+          gh api -X POST "repos/Siddharthgolecha/Testing/statuses/$GITHUB_SHA" \
+            -f state="$outcome" \
+            -f context="strategy19/private-aer-validation" \
+            -f description="Read-only private Grover Qiskit tests: $JOB_STATUS"
       - name: Cleanup ephemeral private sources
         if: always()
         shell: bash
