@@ -28,6 +28,7 @@ on:
           - timeline-19
           - hamiltonian-206
           - hamiltonian-207
+          - hamiltonian-208
         default: schi-next
 
 permissions:
@@ -65,13 +66,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -265,7 +266,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -477,7 +478,7 @@ jobs:
           echo 'Complete private D4 trie: Qiskit transpilation and Aer basis fixture PASS.'
 
       - name: Verify 19-qubit cumulative chess history through Aer and HTTP
-        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-timeline19.XXXXXX")"
@@ -576,6 +577,29 @@ jobs:
             echo "Private Hamiltonian-207 $suite_file: PASS"
           done
           echo 'Private Hamiltonian-207 all six theory/oracle suites: PASS.'
+
+      - name: Verify rank-certified PR 208 theory and coherent gate-math (private exact checkout)
+        if: ${{ inputs.suite == 'hamiltonian-208' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          suites=(
+            test_rank_certified_games.py
+            test_coherent_rank_optimal_action.py
+            test_coherent_cube_rank_oracle.py
+          )
+          log_file="$(mktemp "$RUNNER_TEMP/private-h208.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          for suite_file in "${suites[@]}"; do
+            if ! timeout 550s python -B -m unittest discover \
+                 -s chess/experiments/piece_square_play \
+                 -p "$suite_file" -q >"$log_file" 2>&1; then
+              echo "::error::Private Hamiltonian-208 validation failed in allowlisted suite $suite_file; private traces suppressed."
+              exit 1
+            fi
+            echo "Private Hamiltonian-208 $suite_file: PASS"
+          done
+          echo 'Private Hamiltonian-208 three suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
