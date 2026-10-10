@@ -31,6 +31,7 @@ on:
           - hamiltonian-208
           - game-tree-11
           - optimal-34-native
+          - qars-dynamic
         default: schi-next
 
 permissions:
@@ -663,6 +664,32 @@ jobs:
           fi
           echo '34q optimal-action synthetic-rank Qiskit native-basis and Aer fixture: PASS.'
           echo 'Note: no full-game 23,876-CkX ANF transpilation claimed.'
+
+      - name: Verify QARS dynamic Bellman Hamiltonian (private exact checkout)
+        if: ${{ inputs.suite == 'qars-dynamic' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          suites=(
+            test_qars_bellman_hamiltonian.py
+            test_qars_krk_discovery.py
+          )
+          log_file="$(mktemp "$RUNNER_TEMP/private-qars.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          for suite_file in "${suites[@]}"; do
+            if [[ ! -f "chess/experiments/piece_square_play/$suite_file" ]]; then
+              echo "::error::QARS test file missing from checked-out source: $suite_file"
+              exit 1
+            fi
+            if ! timeout 900s python -B -m unittest discover \
+                 -s chess/experiments/piece_square_play \
+                 -p "$suite_file" -q >"$log_file" 2>&1; then
+              echo "::error::Private QARS validation failed in suite $suite_file; private traces suppressed."
+              exit 1
+            fi
+            echo "Private QARS $suite_file: PASS"
+          done
+          echo 'QARS Bellman/threshold/unknown-rank KRK tests: PASS (private source withheld).'
 
       - name: Remove temporary private checkout and reports
         if: always()
