@@ -31,6 +31,8 @@ on:
           - hamiltonian-208
           - game-tree-11
           - optimal-34-native
+          - timeline-35
+          - indexed-leaf-14
           - qars-dynamic
           - qars-formula-210
         default: schi-next
@@ -270,7 +272,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -482,7 +484,7 @@ jobs:
           echo 'Complete private D4 trie: Qiskit transpilation and Aer basis fixture PASS.'
 
       - name: Verify 19-qubit cumulative chess history through Aer and HTTP
-        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-timeline19.XXXXXX")"
@@ -737,6 +739,53 @@ jobs:
           fi
           echo 'QARS full-KRK oracle-only bounded reference check: PASS.'
           echo 'QARS formula-discovery all eight suites: PASS (no private source exposed).'
+
+      - name: Validate ordered 35q temporal and eight-history 38q quantum evolution
+        if: ${{ inputs.suite == 'timeline-35' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          for suite_file in test_coordinate_two_ply_circuit35.py test_coherent_two_ply_histories38.py; do
+            path="chess/experiments/piece_square_play/$suite_file"
+            if [[ ! -f "$path" ]]; then
+              echo "::error::Missing temporal-chess allowlisted regression: $suite_file"
+              exit 1
+            fi
+            log_file="$(mktemp "$RUNNER_TEMP/private-timeline35.XXXXXX")"
+            if ! timeout 600s python -B -m unittest discover \
+               -s chess/experiments/piece_square_play \
+               -p "$suite_file" -q >"$log_file" 2>&1; then
+              rm -f "$log_file"
+              echo "::error::Temporal 35q/38q private suite failed: $suite_file (private source/traces suppressed)."
+              exit 1
+            fi
+            # Safe numerical resource-summary whitelist; do NOT emit private tracebacks.
+            grep -E '^KRK_TEMPORAL_35_NATIVE ' "$log_file" || true
+            rm -f "$log_file"
+            echo "Temporal 35q/38q $suite_file: PASS."
+          done
+
+      - name: Validate indexed 14q unknown-payoff query and native costs
+        if: ${{ inputs.suite == 'indexed-leaf-14' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          suite_file=test_coherent_indexed_payoff_oracle14.py
+          path="chess/experiments/piece_square_play/$suite_file"
+          if [[ ! -f "$path" ]]; then
+            echo "::error::Missing indexed payoff test on exact branch."
+            exit 1
+          fi
+          log_file="$(mktemp "$RUNNER_TEMP/private-indexed14.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 360s python -B -m unittest discover \
+             -s chess/experiments/piece_square_play \
+             -p "$suite_file" -q >"$log_file" 2>&1; then
+            echo "::error::Private 14q indexed payoff query failed (trace suppressed)."
+            exit 1
+          fi
+          grep -E '^KRK_14Q_INDEXED_LEAF_RESOURCE ' "$log_file" || true
+          echo '14q index-dependent payoff QROM and two-ply AND: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
