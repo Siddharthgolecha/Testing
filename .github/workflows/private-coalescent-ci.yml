@@ -523,6 +523,8 @@ jobs:
         run: |
           set -euo pipefail
           suites=(
+            test_coherent_optimal_d4_sparse_gatecheck.py
+            test_coherent_optimal_d4_six_gatecheck.py
             test_coherent_optimal_d4_25.py
             test_coordinate_dynamic_rook_hamiltonian23.py
             test_coordinate_dynamic_rook_rays25.py
@@ -545,7 +547,7 @@ jobs:
             fi
             echo "Private Hamiltonian-206 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-206 all ten suites: PASS.'
+          echo 'Private Hamiltonian-206 all twelve suites: PASS.'
 
       - name: Verify Hamiltonian PR 207 mathematical policy (private exact checkout)
         if: ${{ inputs.suite == 'hamiltonian-207' }}
