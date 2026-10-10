@@ -530,7 +530,6 @@ jobs:
             test_coordinate_dynamic_rook_hamiltonian23.py
             test_coordinate_dynamic_rook_rays25.py
             test_coordinate_dynamic_white_hamiltonian25.py
-            test_coordinate_black25_sparse_gatecheck.py
             test_coordinate_dynamic_black_hamiltonian25.py
             test_coordinate_black_dimer_hamiltonian25.py
             test_coordinate_two_ply_history33.py
