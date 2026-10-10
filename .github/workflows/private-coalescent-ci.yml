@@ -555,6 +555,7 @@ jobs:
           suites=(
             test_krk4_game_theory.py
             test_krk4_geometric_policy.py
+            test_krk4_geometric_formula.py
             test_krk4_symbolic_policy.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-h207.XXXXXX")"
@@ -568,7 +569,7 @@ jobs:
             fi
             echo "Private Hamiltonian-207 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-207 policy suites: PASS.'
+          echo 'Private Hamiltonian-207 four policy suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
