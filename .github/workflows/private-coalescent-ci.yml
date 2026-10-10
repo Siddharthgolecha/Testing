@@ -722,6 +722,7 @@ jobs:
             test_qars_indexed_three_ply.py
             test_qars_black_counterexample.py
             test_qars_black_counterexample_factored.py
+            test_qars_transposition_structure.py
             test_qars_reversible_forall.py
             test_qars_nested_mate_three.py
           )
@@ -745,7 +746,7 @@ jobs:
             exit 1
           fi
           echo 'QARS full-KRK oracle-only bounded reference check: PASS.'
-          echo 'QARS formula-discovery all fourteen suites: PASS (no private source exposed).'
+          echo 'QARS formula-discovery all fifteen suites: PASS (no private source exposed).'
 
       - name: Validate ordered 35q temporal and eight-history 38q quantum evolution
         if: ${{ inputs.suite == 'timeline-35' }}
