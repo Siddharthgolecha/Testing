@@ -722,6 +722,11 @@ jobs:
             fi
             echo "QARS oracle-only $suite_file: PASS"
           done
+          if ! timeout 850s python -B chess/experiments/piece_square_play/qars_classical_baseline.py >"$log_file" 2>&1; then
+            echo "::error::QARS rank-free full-KRK benchmark failed; private trace suppressed."
+            exit 1
+          fi
+          echo 'QARS full-KRK oracle-only bounded reference check: PASS.'
           echo 'QARS formula-discovery all three suites: PASS (no private source exposed).'
 
       - name: Remove temporary private checkout and reports
