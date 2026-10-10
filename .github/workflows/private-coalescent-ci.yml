@@ -525,6 +525,7 @@ jobs:
           suites=(
             test_coherent_optimal_d4_sparse_gatecheck.py
             test_coherent_optimal_d4_six_gatecheck.py
+            test_coordinate_black25_sparse_gatecheck.py
             test_coherent_optimal_d4_25.py
             test_coordinate_dynamic_rook_hamiltonian23.py
             test_coordinate_dynamic_rook_rays25.py
