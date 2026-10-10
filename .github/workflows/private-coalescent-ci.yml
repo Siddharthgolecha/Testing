@@ -674,6 +674,7 @@ jobs:
           suites=(
             test_qars_bellman_hamiltonian.py
             test_qars_krk_discovery.py
+            test_qars_thermal_minimax.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-qars.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
