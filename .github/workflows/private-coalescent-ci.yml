@@ -32,6 +32,7 @@ on:
           - game-tree-11
           - optimal-34-native
           - qars-dynamic
+          - qars-formula-210
         default: schi-next
 
 permissions:
@@ -69,13 +70,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -690,6 +691,37 @@ jobs:
             echo "Private QARS $suite_file: PASS"
           done
           echo 'QARS Bellman/threshold/unknown-rank KRK tests: PASS (private source withheld).'
+
+      - name: Verify oracle-only QARS move discovery PR 210 (private exact checkout)
+        if: ${{ inputs.suite == 'qars-formula-210' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          if ! python -c 'import qiskit; import numpy' >/dev/null 2>&1; then
+            echo '::error::QARS oracle testing requires installed Qiskit and NumPy (fail-closed).'
+            exit 1
+          fi
+          suites=(
+            test_qars_bounded.py
+            test_qars_coherent_search.py
+            test_qars_resource_audit.py
+          )
+          log_file="$(mktemp "$RUNNER_TEMP/private-qars-formula.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          for suite_file in "${suites[@]}"; do
+            if [[ ! -f "chess/experiments/piece_square_play/$suite_file" ]]; then
+              echo "::error::Missing PR 210 test file $suite_file"
+              exit 1
+            fi
+            if ! timeout 850s python -B -m unittest discover \
+                 -s chess/experiments/piece_square_play \
+                 -p "$suite_file" -q >"$log_file" 2>&1; then
+              echo "::error::QARS formula-discovery regression failed in $suite_file; private traces withheld."
+              exit 1
+            fi
+            echo "QARS oracle-only $suite_file: PASS"
+          done
+          echo 'QARS formula-discovery all three suites: PASS (no private source exposed).'
 
       - name: Remove temporary private checkout and reports
         if: always()
