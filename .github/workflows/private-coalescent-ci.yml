@@ -788,26 +788,29 @@ jobs:
           grep -E '^KRK_14Q_INDEXED_LEAF_RESOURCE ' "$log_file" || true
           echo '14q index-dependent payoff QROM and two-ply AND: PASS.'
 
-      - name: Validate computed-uncomputed 49q chess history leaf oracle
+      - name: Validate 49q real-history leaf query and adversarial search
         if: ${{ inputs.suite == 'history-payoff-49' }}
         working-directory: private-src
         run: |
           set -euo pipefail
-          suite_file=test_coherent_history_payoff_oracle49.py
-          path="chess/experiments/piece_square_play/$suite_file"
-          if [[ ! -f "$path" ]]; then
-            echo "::error::Private 49q history-query suite missing on selected SHA."
-            exit 1
-          fi
-          log_file="$(mktemp "$RUNNER_TEMP/private-history49.XXXXXX")"
-          trap 'rm -f "$log_file"' EXIT
-          if ! timeout 600s python -B -m unittest discover \
-              -s chess/experiments/piece_square_play \
-              -p "$suite_file" -q >"$log_file" 2>&1; then
-            echo "::error::49q temporal-history payoff query failed (private trace suppressed)."
-            exit 1
-          fi
-          echo '49q clean history-keyed unknown-payoff query gate checks: PASS. Native CX/routing not claimed.'
+          for suite_file in test_coherent_history_payoff_oracle49.py test_coherent_history_game_search49.py; do
+            path="chess/experiments/piece_square_play/$suite_file"
+            if [[ ! -f "$path" ]]; then
+              echo "::error::Private 49q history-game regression missing: $suite_file"
+              exit 1
+            fi
+            log_file="$(mktemp "$RUNNER_TEMP/private-history49.XXXXXX")"
+            if ! timeout 600s python -B -m unittest discover \
+                -s chess/experiments/piece_square_play \
+                -p "$suite_file" -q >"$log_file" 2>&1; then
+              rm -f "$log_file"
+              echo "::error::49q history payoff/game regression failed: $suite_file; private source/traces suppressed."
+              exit 1
+            fi
+            rm -f "$log_file"
+            echo "49q history payoff/game $suite_file: PASS."
+          done
+          echo '49q real chess move history White-OR Black-AND logical gate checks passed. No native CX claimed.'
 
       - name: Remove temporary private checkout and reports
         if: always()
