@@ -601,6 +601,8 @@ jobs:
             test_coherent_cube_rank_oracle.py
             test_coherent_rank_highbits_optimal.py
             test_coherent_optimal_action_preparation.py
+            test_coherent_board_legal_preparation.py
+            test_coherent_legal_optimal_amplification.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-h208.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -617,7 +619,7 @@ jobs:
             fi
             echo "Private Hamiltonian-208 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-208 all six suites: PASS.'
+          echo 'Private Hamiltonian-208 all eight suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
