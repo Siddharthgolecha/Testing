@@ -585,6 +585,7 @@ jobs:
           set -euo pipefail
           suites=(
             test_rank_certified_games.py
+            test_rank_certified_slider_adapter.py
             test_coherent_rank_optimal_action.py
             test_coherent_cube_rank_oracle.py
           )
@@ -599,7 +600,7 @@ jobs:
             fi
             echo "Private Hamiltonian-208 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-208 three suites: PASS.'
+          echo 'Private Hamiltonian-208 four suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
