@@ -809,7 +809,7 @@ jobs:
         working-directory: private-src
         run: |
           set -euo pipefail
-          for suite_file in test_coherent_history_payoff_oracle49.py test_coherent_history_game_search49.py; do
+          for suite_file in test_coherent_history_payoff_oracle49.py test_coherent_history_game_search49.py test_coherent_history_game_search49_factored.py; do
             path="chess/experiments/piece_square_play/$suite_file"
             if [[ ! -f "$path" ]]; then
               echo "::error::Private 49q history-game regression missing: $suite_file"
