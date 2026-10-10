@@ -595,10 +595,20 @@ jobs:
         run: |
           set -euo pipefail
           suites=(
+            test_rank_certified_games.py
+            test_rank_certified_slider_adapter.py
+            test_coherent_rank_optimal_action.py
+            test_coherent_cube_rank_oracle.py
+            test_coherent_rank_highbits_optimal.py
+            test_coherent_optimal_action_preparation.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-h208.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
           for suite_file in "${suites[@]}"; do
+            if [[ ! -f "chess/experiments/piece_square_play/$suite_file" ]]; then
+              echo "::error::Missing PR 208 test file $suite_file"
+              exit 1
+            fi
             if ! timeout 550s python -B -m unittest discover \
                  -s chess/experiments/piece_square_play \
                  -p "$suite_file" -q >"$log_file" 2>&1; then
@@ -607,7 +617,7 @@ jobs:
             fi
             echo "Private Hamiltonian-208 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-208 four suites: PASS.'
+          echo 'Private Hamiltonian-208 all six suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
