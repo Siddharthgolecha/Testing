@@ -33,6 +33,7 @@ on:
           - optimal-34-native
           - timeline-35
           - indexed-leaf-14
+          - history-payoff-49
           - qars-dynamic
           - qars-formula-210
         default: schi-next
@@ -272,7 +273,7 @@ jobs:
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
-        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' || (inputs.suite || 'timeline-19') == 'history-payoff-49' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-mpl.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -484,7 +485,7 @@ jobs:
           echo 'Complete private D4 trie: Qiskit transpilation and Aer basis fixture PASS.'
 
       - name: Verify 19-qubit cumulative chess history through Aer and HTTP
-        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' || (inputs.suite || 'timeline-19') == 'history-payoff-49' }}
         working-directory: private-src
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/private-timeline19.XXXXXX")"
@@ -786,6 +787,27 @@ jobs:
           fi
           grep -E '^KRK_14Q_INDEXED_LEAF_RESOURCE ' "$log_file" || true
           echo '14q index-dependent payoff QROM and two-ply AND: PASS.'
+
+      - name: Validate computed-uncomputed 49q chess history leaf oracle
+        if: ${{ inputs.suite == 'history-payoff-49' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          suite_file=test_coherent_history_payoff_oracle49.py
+          path="chess/experiments/piece_square_play/$suite_file"
+          if [[ ! -f "$path" ]]; then
+            echo "::error::Private 49q history-query suite missing on selected SHA."
+            exit 1
+          fi
+          log_file="$(mktemp "$RUNNER_TEMP/private-history49.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 600s python -B -m unittest discover \
+              -s chess/experiments/piece_square_play \
+              -p "$suite_file" -q >"$log_file" 2>&1; then
+            echo "::error::49q temporal-history payoff query failed (private trace suppressed)."
+            exit 1
+          fi
+          echo '49q clean history-keyed unknown-payoff query gate checks: PASS. Native CX/routing not claimed.'
 
       - name: Remove temporary private checkout and reports
         if: always()
