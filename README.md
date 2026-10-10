@@ -68,3 +68,33 @@ The **manual-only** `theory-krk` suite uses the same read-only deploy key to fet
 The separate **manual-only** `theory-lean` suite checks four private `RecordAlgebra/QuantumChess` theorem files using `lake env lean` in `lean-proofs`, and rejects literal proof-hole and axiom declarations. It proves only what those files actually contain: passing does not establish complete KRK semantics or a quantum advantage. `schi-next`, `lean-smoke`, and `both` keep their previous behavior.
 
 To test the draft theory work, choose **Actions → Private Coalescent CI (ephemeral) → Run workflow**, set `source_ref` to `theory/coalescent-history-foundations` (or a pinned full SHA), and choose `theory-krk` or `theory-lean`. The current GitHub connector cannot issue a workflow dispatch itself; changes to this workflow do **not** count as successful private CI execution. A human must click **Run workflow**. Since this repository is public, branch names and commit identifiers used in dispatch inputs can remain visible in public metadata.
+
+
+### Hamiltonian PR #206 and mathematical PR #207 validation (2026-10-10)
+
+Two additional options were added to the **existing manual-only ephemeral**
+workflow; there are no private repository source files in this public
+Testing repository, and no public push-trigger for private code.
+
+Use **Actions → Private Coalescent CI (ephemeral) → Run workflow**.
+
+- To verify the coherent Hamiltonian and symmetry-optimal-move circuit
+  from private PR #206, supply its **exact head commit SHA** as
+  `source_ref` and select `hamiltonian-206`. The allowlist runs ten
+  private Qiskit/Aer, canonical legality, history, spectrum and phase
+  interference suites. A test failure stops the run with only a
+  public-safe suite-name/FAIL status.
+- To verify the mathematical strategy results from private PR #207,
+  supply its **exact head SHA** as `source_ref` and select
+  `hamiltonian-207`. It runs the independent game-theory,
+  seven-round-policy, exact geometric-rank formula, and symbolic-rank
+  regression suites against the private canonical KRK semantics.
+
+The human-triggered workflow is still the **only** testing action
+supported here. Merely adding a suite or committing its test files
+is **not** evidence of a passing Qiskit run. Its read-only deploy key,
+private log suppression, runner-local checkout and `always()`
+cleanup remain unchanged. Pin the commit SHA, because the research
+branches are still advancing. If an allowlisted private test fails,
+diagnose it in a private runner or local checkout rather than
+printing private tracebacks into this public repository.
