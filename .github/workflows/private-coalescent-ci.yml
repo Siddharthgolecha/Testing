@@ -678,6 +678,7 @@ jobs:
             test_qars_reversible_value_pebbling.py
             test_qars_causal_cone_pebbling.py
             test_qars_causal_action_oracle.py
+            test_qars_causal_grover.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-qars.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -694,7 +695,7 @@ jobs:
             fi
             echo "Private QARS $suite_file: PASS"
           done
-          echo 'QARS six fail-closed Bellman, Pebble, Causal Cone and action suites: PASS.'
+          echo 'QARS seven fail-closed Bellman, Pebble, Causal Cone and action suites: PASS.'
 
       - name: Verify oracle-only QARS move discovery PR 210 (private exact checkout)
         if: ${{ inputs.suite == 'qars-formula-210' }}
