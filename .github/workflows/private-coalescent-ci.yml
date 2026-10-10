@@ -526,6 +526,7 @@ jobs:
             test_coherent_optimal_d4_sparse_gatecheck.py
             test_coherent_optimal_d4_six_gatecheck.py
             test_coordinate_black25_sparse_gatecheck.py
+            test_coherent_mtbdd_rank_oracle.py
             test_coherent_optimal_d4_25.py
             test_coordinate_dynamic_rook_hamiltonian23.py
             test_coordinate_dynamic_rook_rays25.py
@@ -548,7 +549,7 @@ jobs:
             fi
             echo "Private Hamiltonian-206 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-206 all thirteen suites: PASS.'
+          echo 'Private Hamiltonian-206 all fourteen suites: PASS.'
 
       - name: Verify Hamiltonian PR 207 mathematical policy (private exact checkout)
         if: ${{ inputs.suite == 'hamiltonian-207' }}
@@ -560,6 +561,7 @@ jobs:
             test_krk4_geometric_policy.py
             test_krk4_geometric_formula.py
             test_krk4_symbolic_policy.py
+            test_coherent_krk_rank_oracle.py
             test_kxk_sliding_geometry.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-h207.XXXXXX")"
@@ -573,7 +575,7 @@ jobs:
             fi
             echo "Private Hamiltonian-207 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-207 five theory suites: PASS.'
+          echo 'Private Hamiltonian-207 all six theory/oracle suites: PASS.'
 
       - name: Remove temporary private checkout and reports
         if: always()
