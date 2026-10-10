@@ -529,6 +529,7 @@ jobs:
             test_coordinate_dynamic_rook_hamiltonian23.py
             test_coordinate_dynamic_rook_rays25.py
             test_coordinate_dynamic_white_hamiltonian25.py
+            test_coordinate_black25_sparse_gatecheck.py
             test_coordinate_dynamic_black_hamiltonian25.py
             test_coordinate_black_dimer_hamiltonian25.py
             test_coordinate_two_ply_history33.py
@@ -547,7 +548,7 @@ jobs:
             fi
             echo "Private Hamiltonian-206 $suite_file: PASS"
           done
-          echo 'Private Hamiltonian-206 all twelve suites: PASS.'
+          echo 'Private Hamiltonian-206 all thirteen suites: PASS.'
 
       - name: Verify Hamiltonian PR 207 mathematical policy (private exact checkout)
         if: ${{ inputs.suite == 'hamiltonian-207' }}
