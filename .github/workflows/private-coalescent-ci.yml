@@ -707,6 +707,8 @@ jobs:
             test_qars_coherent_search.py
             test_qars_resource_audit.py
             test_qars_unknown_count.py
+            test_qars_indexed_transition.py
+            test_qars_mate_one_search.py
           )
           log_file="$(mktemp "$RUNNER_TEMP/private-qars-formula.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -728,7 +730,7 @@ jobs:
             exit 1
           fi
           echo 'QARS full-KRK oracle-only bounded reference check: PASS.'
-          echo 'QARS formula-discovery all four suites: PASS (no private source exposed).'
+          echo 'QARS formula-discovery all six suites: PASS (no private source exposed).'
 
       - name: Remove temporary private checkout and reports
         if: always()
