@@ -20,6 +20,7 @@ on:
           - both
           - theory-krk
           - theory-lean
+          - general-krk-lean
           - theory-controller
           - web-krk
           - uniform-krk
@@ -115,7 +116,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
@@ -271,6 +272,28 @@ jobs:
             exit 1
           fi
           echo 'Private QuantumChess Lean modules: PASS (details suppressed).'
+
+      - name: Build and audit private general KRK Lean proofs (manual only)
+        if: ${{ (inputs.suite || 'timeline-19') == 'general-krk-lean' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-general-krk-lean.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 2700s lake build \
+              RecordAlgebra.Chess.GeneralKRKControllerAudit \
+              RecordAlgebra.Chess.KRK4CertificateAudit \
+              RecordAlgebra.Verification.Axioms.KRKGeometricControllerAxiomAudit \
+              >"$log_file" 2>&1; then
+            echo '::error::Private general-KRK Lean targets failed or timed out; source output withheld.'
+            exit 1
+          fi
+          if ! timeout 180s python3 scripts/check_no_sorry.py \
+              --roots RecordAlgebra.Chess.GeneralKRKControllerAudit \
+              >>"$log_file" 2>&1; then
+            echo '::error::Private general-KRK transitive proof-hole scan failed; details withheld.'
+            exit 1
+          fi
+          echo 'Private general-KRK Lean targets and transitive proof-hole scan: PASS (details suppressed).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
         if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' || (inputs.suite || 'timeline-19') == 'history-payoff-49' }}
