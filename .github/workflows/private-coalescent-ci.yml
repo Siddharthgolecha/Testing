@@ -21,6 +21,7 @@ on:
           - theory-krk
           - theory-lean
           - general-krk-lean
+          - general-krk-finite
           - theory-controller
           - web-krk
           - uniform-krk
@@ -294,6 +295,27 @@ jobs:
             exit 1
           fi
           echo 'Private general-KRK Lean targets and transitive proof-hole scan: PASS (details suppressed).'
+
+      - name: Verify private KRK setup residual certificates and geometric selector
+        if: ${{ (inputs.suite || 'timeline-19') == 'general-krk-finite' }}
+        working-directory: private-src
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-general-krk-finite.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 900s python3 -B -m unittest discover \
+              -s research/chess/theory -p 'test_setup_route_residual_audit.py' -q \
+              >"$log_file" 2>&1; then
+            echo '::error::Setup route and D4 residual tests failed or timed out; private output withheld.'
+            exit 1
+          fi
+          echo 'Setup route finite canonical parity and residual checks: PASS.'
+          if ! timeout 1350s python3 -B -m unittest discover \
+              -s research/chess/theory -p 'test_geometric_krk_controller_audit.py' -q \
+              >"$log_file" 2>&1; then
+            echo '::error::Geometric controller finite adversarial audit failed or timed out; private output withheld.'
+            exit 1
+          fi
+          echo 'Geometric selector finite adversarial audit: PASS (not an all-board proof).'
 
       - name: Install Qiskit mpl circuit drawer dependencies
         if: ${{ (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'timeline-35' || (inputs.suite || 'timeline-19') == 'indexed-leaf-14' || (inputs.suite || 'timeline-19') == 'history-payoff-49' }}

@@ -124,3 +124,20 @@ enter the **exact private commit SHA** in `source_ref`, select
 than a descriptive private branch name because workflow inputs are visible
 in public metadata. Only report PASS after the run actually completes
 successfully; this workflow definition itself is not a test result.
+
+### Finite KRK falsification suite
+
+Choose `general-krk-finite` in the same manually-dispatched private workflow
+and pin the exact `coalescent-research` SHA. This suite independently runs:
+
+* the setup-route D4/orbit and minimal adversarial transaction regressions
+  against the canonical KRK-v1 Python reference, including the newly
+  integrated opposite-side route;
+* the geometric-controller selector audit against canonical transitions on
+  small boards, including checks for uncovered actions or adversarial cycles.
+
+The checks use Python's `unittest` discovery and fail if the private suite
+returns a nonzero status. They complement `general-krk-lean` but **do not
+certify universal termination or prove the arbitrary-board theorem**.
+As with the Lean suite, a successful public toolchain smoke run is
+insufficient; the manually requested private run must pass.
