@@ -98,3 +98,29 @@ cleanup remain unchanged. Pin the commit SHA, because the research
 branches are still advancing. If an allowlisted private test fails,
 diagnose it in a private runner or local checkout rather than
 printing private tracebacks into this public repository.
+
+## General arbitrary-board KRK Lean audit (2026-10-16)
+
+The `general-krk-lean` choice in **Private Coalescent CI (ephemeral)** checks out the
+chosen private `coalescent-research` SHA using the existing read-only deploy key
+and attempts all three focused Lean build targets:
+
+- `RecordAlgebra.Chess.GeneralKRKControllerAudit` (includes the bounded-search
+  geometry and phase-coverage development),
+- `RecordAlgebra.Chess.KRK4CertificateAudit` (finite 4x4 certificate),
+- `RecordAlgebra.Verification.Axioms.KRKGeometricControllerAxiomAudit`
+  (the separate deterministic geometric-controller soundness track).
+
+It also runs the transitive `scripts/check_no_sorry.py` checker on the general
+controller audit root. Failure stops the run; detailed private output is not
+printed in public logs. The suite is **manual-dispatch only**, not run by the
+push-triggered public smoke workflow. It does not prove an unconditional
+all-board KRK claim: the remaining `UniversalSetupPhaseCoverage` premise must
+be discharged by a new Lean theorem.
+
+To run: Actions → **Private Coalescent CI (ephemeral)** → **Run workflow**,
+enter the **exact private commit SHA** in `source_ref`, select
+`general-krk-lean`, and inspect the completed run's status. Use a SHA rather
+than a descriptive private branch name because workflow inputs are visible
+in public metadata. Only report PASS after the run actually completes
+successfully; this workflow definition itself is not a test result.
