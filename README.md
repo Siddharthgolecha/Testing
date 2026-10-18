@@ -141,3 +141,32 @@ returns a nonzero status. They complement `general-krk-lean` but **do not
 certify universal termination or prove the arbitrary-board theorem**.
 As with the Lean suite, a successful public toolchain smoke run is
 insufficient; the manually requested private run must pass.
+
+## Geometric-controller Lean proof-boundary (manual only; 2026-10-18)
+
+The `geometric-controller-lean` choice in **Private Coalescent CI (ephemeral)**
+is the focused validation path for the fixed-priority memoryless selector
+(`onlineController`). It checks out the **exact private commit** supplied in
+`source_ref` and builds the complete maintained geometric-controller axiom
+audit (`KRKGeometricControllerAxiomAudit`) alongside the existing arbitrary-board
+theorem audit (`KRKArbitraryBoardAxiomAudit`). It then scans the local import
+closures of **both roots** with `scripts/check_no_sorry.py`.
+
+To run, use Actions → **Private Coalescent CI (ephemeral)** → **Run workflow**,
+set `source_ref` to the 40-character coalescent-research commit SHA, and select
+`geometric-controller-lean`. The current controller-milestone anchor is
+`d28bf8996cca2eadefe55ab0fbb52b5f5be2ea5d` (2026-10-18). Check the
+completed run URL and its actual status before reporting validation.
+
+**Proof boundary:** These checks can establish that the existing facade,
+printed axiom declarations, and proof-hole scan pass; they **cannot** by
+themselves establish the still-open unconditional geometric-controller
+coverage/termination theorem. The already-proved arbitrary-board
+`ForcesMate` theorem uses a different controller and does not discharge the
+fixed-priority selector goal. A future proposed unconditional endpoint must
+be imported into the maintained geometric audit and have its exact declaration
+printed before this suite can validate it.
+
+This suite preserves the secure manual-only private checkout, read-only
+deploy key, suppressed private logs and runner-local cleanup. The public
+push/PR `Toolchain CI` does not execute this private suite.
