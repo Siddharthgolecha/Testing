@@ -196,3 +196,49 @@ private-checkout suite still retains its own *manual* `workflow_dispatch`
 entrypoint. Check the downstream run's result: a green poller only establishes
 that the API accepted the request, **not** that Lean compiled or any unconditional
 KRK theorem was proven. Cache eviction may lead to a harmless duplicate check.
+
+
+## Agent-triggered private Lean checks
+
+Agents working in `Siddharthgolecha/coalescent-research` can request a private
+Lean build **immediately** with a normal GitHub `create_issue` action in the
+public `Siddharthgolecha/Testing` repository. No manual Actions button, extra
+PAT, or private-repository Actions runner is required.
+
+1. Push the private changes to the research repository and obtain the exact
+   **40-character commit SHA**. For a PR, use its current `head_sha`, not
+   a branch name.
+2. Create an issue in **Testing** with this exact title:
+
+   ```text
+   [lean-ci] run
+   ```
+
+   And a body consisting of exactly two lines (replace the sample SHA with
+   the actual full private commit SHA):
+
+   ```text
+   source_sha: 0123456789abcdef0123456789abcdef01234567
+   suite: geometric-controller-lean
+   ```
+
+   Accepted suite names are `geometric-controller-lean`, `general-krk-lean`,
+   `theory-lean`, and `lean-smoke`.
+3. The trusted `issues: opened` workflow, which runs **only for issues
+   authored by GitHub account ID 40235858**, validates the exact input,
+   dispatches the existing `Private Coalescent CI (ephemeral)` workflow,
+   comments on the issue that dispatch was accepted, and closes it. The
+   downstream workflow's PASS/FAIL result is the evidence of compilation.
+
+A connected GitHub agent can create the issue directly through its normal
+GitHub integration. The public issue contains the private commit SHA and suite,
+**not private source code, Lean diagnostics, branch names, or credentials**.
+Do not post private code in these issues. Other users' issues cannot dispatch
+the credential-bearing workflow; the request format is strictly parsed rather
+than evaluated as commands.
+
+The hourly private branch poller remains an automatic fallback. The
+issue-request workflow is the immediate agent-operated path for commits on
+any private branch and PR. If the agent is acting through a GitHub identity
+other than the owner account, this owner-only gate deliberately rejects its
+requests until that identity is explicitly reviewed and allowlisted.
