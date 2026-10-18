@@ -322,10 +322,10 @@ jobs:
 
           log = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
           public_key = pathlib.Path(sys.argv[2])
-          matches = re.findall(r"(?m)^.*?\\.lean:\\d+:\\d+: error:[^\\n]*", log)
+          matches = re.findall(r"(?m)^.*?\.lean:\d+:\d+: error:[^\n]*", log)
           if not matches:
-              matches = re.findall(r"(?m)^.*(?:error:|failed|FAIL)[^\\n]*", log)[-4:]
-          snippet = "\\n".join(matches[:5]).encode("utf-8")[:360]
+              matches = re.findall(r"(?m)^.*(?:error:|failed|FAIL)[^\n]*", log)[-4:]
+          snippet = "\n".join(matches[:5]).encode("utf-8")[:360]
           if not snippet:
               snippet = b"Lean build failed without a recognized error marker"
           with tempfile.TemporaryDirectory() as directory:
