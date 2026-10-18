@@ -52,7 +52,7 @@ jobs:
           path: private-src
 
       - name: Read exact private source commit without printing it
-        id: private-ref
+        id: private_ref
         shell: bash
         run: |
           set -euo pipefail
@@ -70,14 +70,14 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ runner.temp }}/private-lean-dispatch-marker.txt
-          key: private-geometric-lean-dispatched-v1-${{ steps.private-ref.outputs.sha }}
+          key: private-geometric-lean-dispatched-v1-${{ steps.private_ref.outputs.sha }}
           lookup-only: true
 
       - name: Dispatch existing private-coalescent-ci Lean suite
         if: steps.marker.outputs.cache-hit != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_SHA: ${{ steps.private-ref.outputs.sha }}
+          SOURCE_SHA: ${{ steps.private_ref.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -95,7 +95,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ${{ runner.temp }}/private-lean-dispatch-marker.txt
-          key: private-geometric-lean-dispatched-v1-${{ steps.private-ref.outputs.sha }}
+          key: private-geometric-lean-dispatched-v1-${{ steps.private_ref.outputs.sha }}
 
       - name: Delete private runner-local checkout
         if: always()
