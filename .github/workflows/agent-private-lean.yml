@@ -1,0 +1,80 @@
+name: Agent-requested private Lean checks
+
+# Agents can open a public Testing issue using GitHub's normal issue API.
+# Only an issue authored by the repository owner, with a strict request
+# format, can reach Actions:write. Do not enable PR/fork events here.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Validate owner request and dispatch private Lean
+    if: ${{ github.event.issue.user.id == 40235858 && github.event.issue.title == '[lean-ci] run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+    env:
+      REQUEST_BODY: ${{ github.event.issue.body }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Parse exact SHA and allowlisted Lean suite
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          body = os.environ.get("REQUEST_BODY", "").strip()
+          # Never evaluate issue text as shell or GitHub Actions expressions.
+          match = re.fullmatch(
+              r"source_sha: ([0-9a-f]{40})\nsuite: "
+              r"(geometric-controller-lean|general-krk-lean|theory-lean|lean-smoke)",
+              body,
+          )
+          if match is None:
+              print("::error::Use exactly two lines: source_sha: <40-hex-sha> and suite: <allowed Lean suite>.")
+              sys.exit(1)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as stream:
+              stream.write(f"source_sha={match.group(1)}\n")
+              stream.write(f"suite={match.group(2)}\n")
+          print("Trusted owner requested an allowlisted private Lean suite on an exact SHA.")
+          PY
+
+      - name: Dispatch existing ephemeral private Lean workflow
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          SUITE: ${{ steps.request.outputs.suite }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            /repos/Siddharthgolecha/Testing/actions/workflows/private-coalescent-ci.yml/dispatches \
+            -f ref=main \
+            -f "inputs[source_ref]=$SOURCE_SHA" \
+            -f "inputs[suite]=$SUITE"
+          echo "Accepted private Lean validation dispatch for suite $SUITE."
+          echo 'The downstream Lean workflow must pass separately.'
+
+      - name: Record accepted dispatch on the request issue
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+          SUITE: ${{ steps.request.outputs.suite }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh issue comment "$ISSUE_NUMBER" --repo Siddharthgolecha/Testing \
+            --body "Dispatched \`$SUITE\` for exact private source SHA \`$SOURCE_SHA\`. Check [Private Coalescent CI runs](https://github.com/Siddharthgolecha/Testing/actions/workflows/private-coalescent-ci.yml). Dispatch accepted does not imply Lean PASS."
+          gh issue close "$ISSUE_NUMBER" --repo Siddharthgolecha/Testing \
+            --reason completed
