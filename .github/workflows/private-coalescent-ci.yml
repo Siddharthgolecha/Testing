@@ -21,6 +21,7 @@ on:
           - theory-krk
           - theory-lean
           - general-krk-lean
+          - geometric-controller-lean
           - general-krk-finite
           - theory-controller
           - web-krk
@@ -117,7 +118,7 @@ jobs:
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' || (inputs.suite || 'timeline-19') == 'geometric-controller-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: private-src/lean-proofs
@@ -295,6 +296,32 @@ jobs:
             exit 1
           fi
           echo 'Private general-KRK Lean targets and transitive proof-hole scan: PASS (details suppressed).'
+
+      # A proof-completion run is deliberately manual: no untrusted PR, fork or
+      # push event can request the private checkout. Pin source_ref to an exact
+      # coalescent-research commit; do not print its source or Lean diagnostics.
+      - name: Build direct geometric-controller proof boundary and 67-declaration audit
+        if: ${{ (inputs.suite || 'timeline-19') == 'geometric-controller-lean' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          log_file="$(mktemp "$RUNNER_TEMP/private-geometric-controller-lean.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 2700s lake build \
+              RecordAlgebra.Verification.Axioms.KRKGeometricControllerAxiomAudit \
+              RecordAlgebra.Verification.Axioms.KRKArbitraryBoardAxiomAudit \
+              >"$log_file" 2>&1; then
+            echo '::error::Private geometric-controller facade or audited endpoints failed to compile; details withheld.'
+            exit 1
+          fi
+          if ! timeout 180s python3 scripts/check_no_sorry.py --roots \
+              RecordAlgebra.Verification.Axioms.KRKGeometricControllerAxiomAudit \
+              RecordAlgebra.Verification.Axioms.KRKArbitraryBoardAxiomAudit \
+              >>"$log_file" 2>&1; then
+            echo '::error::Geometric-controller transitive proof-hole scan failed; details withheld.'
+            exit 1
+          fi
+          echo 'Geometric-controller maintained facade, arbitrary-board endpoints, and transitive source scan: PASS.'
+          echo 'Boundary: a successful run does not establish universal geometric-selector coverage or termination.'
 
       - name: Verify private KRK setup residual certificates and geometric selector
         if: ${{ (inputs.suite || 'timeline-19') == 'general-krk-finite' }}
