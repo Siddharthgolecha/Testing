@@ -61,4 +61,4 @@ jobs:
           lean --version
           lake --version
       - name: Compile public Mathlib smoke theorem
-        run: lake build Testing.Smoke
+        run: lake build Testing
