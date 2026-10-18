@@ -44,7 +44,6 @@ jobs:
           ssh-strict: true
           persist-credentials: false
           fetch-depth: 1
-          filter: blob:none
           sparse-checkout: |
             .github
           submodules: false
