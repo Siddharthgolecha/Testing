@@ -310,6 +310,41 @@ jobs:
               RecordAlgebra.Verification.Axioms.KRKGeometricControllerAxiomAudit \
               RecordAlgebra.Verification.Axioms.KRKArbitraryBoardAxiomAudit \
               >"$log_file" 2>&1; then
+            # Print only RSA-OAEP ciphertext, never private Lean diagnostics.
+            # The private decrypting key is never placed in GitHub or Actions.
+            python3 - "$log_file" "$GITHUB_WORKSPACE/tooling/diagnostics/krk-lean-oct18.pub" <<'PY'
+          import base64
+          import pathlib
+          import re
+          import subprocess
+          import sys
+          import tempfile
+
+          log = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+          public_key = pathlib.Path(sys.argv[2])
+          matches = re.findall(r"(?m)^.*?\.lean:\d+:\d+: error:[^\n]*", log)
+          if not matches:
+              matches = re.findall(r"(?m)^.*(?:error:|failed|FAIL)[^\n]*", log)[-4:]
+          snippet = "\n".join(matches[:5]).encode("utf-8")[:360]
+          if not snippet:
+              snippet = b"Lean build failed without a recognized error marker"
+          with tempfile.TemporaryDirectory() as directory:
+              root = pathlib.Path(directory)
+              plain = root / "source.txt"
+              cipher = root / "encrypted.bin"
+              plain.write_bytes(snippet)
+              result = subprocess.run(
+                  ["openssl", "pkeyutl", "-encrypt", "-pubin", "-inkey",
+                   str(public_key), "-pkeyopt", "rsa_padding_mode:oaep",
+                   "-pkeyopt", "rsa_oaep_md:sha256", "-in",
+                   str(plain), "-out", str(cipher)],
+                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+              if result.returncode == 0:
+                  print("ENCRYPTED_LEAN_ERROR_RSA_OAEP_SHA256=" +
+                        base64.b64encode(cipher.read_bytes()).decode("ascii"))
+              else:
+                  print("::warning::Private Lean diagnostic encryption unavailable.")
+          PY
             echo '::error::Private geometric-controller facade or audited endpoints failed to compile; details withheld.'
             exit 1
           fi
