@@ -170,3 +170,29 @@ printed before this suite can validate it.
 This suite preserves the secure manual-only private checkout, read-only
 deploy key, suppressed private logs and runner-local cleanup. The public
 push/PR `Toolchain CI` does not execute this private suite.
+
+
+## Automatic private geometric-controller Lean checks (2026-10-18)
+
+The trusted [auto-dispatch-geometric-lean.yml](.github/workflows/auto-dispatch-geometric-lean.yml)
+workflow checks the private `coalescent-research` branch
+`krk/uniform-geometric-controller` once per hour (at minute 17 UTC; GitHub
+may delay scheduled jobs). It also runs when this poller changes on Testing's
+`main`, and supports a maintainer-initiated `workflow_dispatch`. It has **no
+pull-request or fork trigger**.
+
+The poller uses Testing's existing read-only `COALESCENT_DEPLOY_KEY` to fetch
+the exact private branch HEAD on an ephemeral runner. If a successful-dispatch
+marker for that SHA is not yet in the public GitHub Actions cache, it uses
+Testing's same-repository `GITHUB_TOKEN` (Actions-write only) to invoke the
+existing **Private Coalescent CI (ephemeral)** workflow with
+`source_ref=<the exact SHA>` and `suite=geometric-controller-lean`. Only a
+SHA dispatch marker (no private source or diagnostics) is cached. Checkout
+credentials are not persisted and the ephemeral private checkout is removed.
+
+This avoids needing private `coalescent-research` Actions runners, which may
+be unavailable, and needs **no additional dispatch PAT**. The downstream
+private-checkout suite still retains its own *manual* `workflow_dispatch`
+entrypoint. Check the downstream run's result: a green poller only establishes
+that the API accepted the request, **not** that Lean compiled or any unconditional
+KRK theorem was proven. Cache eviction may lead to a harmless duplicate check.
