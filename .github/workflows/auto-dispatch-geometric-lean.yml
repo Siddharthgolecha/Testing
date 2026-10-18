@@ -1,0 +1,105 @@
+name: Auto-dispatch private geometric KRK Lean
+
+# This workflow only runs from trusted Testing/main events. It never runs
+# with private credentials on pull requests, forks, or pull_request_target.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/auto-dispatch-geometric-lean.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write # dispatch another workflow in this same Testing repository
+
+concurrency:
+  group: auto-dispatch-private-geometric-lean
+  cancel-in-progress: false
+
+jobs:
+  poll:
+    name: Check private KRK head and request Lean audit if changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Require existing read-only private deploy key
+        env:
+          KEY: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "$KEY" ]]; then
+            echo '::error::COALESCENT_DEPLOY_KEY is not configured in Testing.'
+            exit 1
+          fi
+
+      - name: Fetch latest private KRK branch on this ephemeral runner
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: krk/uniform-geometric-controller
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          ssh-strict: true
+          persist-credentials: false
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout: |
+            .github
+          submodules: false
+          lfs: false
+          path: private-src
+
+      - name: Read exact private source commit without printing it
+        id: private-ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="$(git -C private-src rev-parse HEAD)"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo '::error::Private checkout yielded an invalid SHA.'
+            exit 1
+          }
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      # The public cache contains only a harmless dispatch marker, never source
+      # files, diagnostics, credentials, or any private build output.
+      - name: Check previously dispatched exact commit
+        id: marker
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/private-lean-dispatch-marker.txt
+          key: private-geometric-lean-dispatched-v1-${{ steps.private-ref.outputs.sha }}
+          lookup-only: true
+
+      - name: Dispatch existing private-coalescent-ci Lean suite
+        if: steps.marker.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ steps.private-ref.outputs.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            /repos/Siddharthgolecha/Testing/actions/workflows/private-coalescent-ci.yml/dispatches \
+            -f ref=main \
+            -f "inputs[source_ref]=$SOURCE_SHA" \
+            -f 'inputs[suite]=geometric-controller-lean'
+          printf '%s\n' "$SOURCE_SHA" > "$RUNNER_TEMP/private-lean-dispatch-marker.txt"
+          echo 'Private geometric-controller Lean validation requested for latest source SHA.'
+          echo 'API acceptance does not establish that the Lean proof passed.'
+
+      - name: Record successful dispatch (SHA marker only)
+        if: steps.marker.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ${{ runner.temp }}/private-lean-dispatch-marker.txt
+          key: private-geometric-lean-dispatched-v1-${{ steps.private-ref.outputs.sha }}
+
+      - name: Delete private runner-local checkout
+        if: always()
+        shell: bash
+        run: |
+          rm -rf -- private-src
+          rm -f -- "$RUNNER_TEMP/private-lean-dispatch-marker.txt"
