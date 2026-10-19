@@ -853,6 +853,9 @@ jobs:
               exit 1
             fi
             echo "QARS oracle-only $suite_file: PASS"
+            if [[ "$suite_file" == "test_qars_rank_free_qiskit.py" ]]; then
+              grep -E '^QARS_RANK_FREE_NATIVE \{' "$log_file" || true
+            fi
           done
           if ! timeout 850s python -B chess/experiments/piece_square_play/qars_classical_baseline.py >"$log_file" 2>&1; then
             echo "::error::QARS rank-free full-KRK benchmark failed; private trace suppressed."
