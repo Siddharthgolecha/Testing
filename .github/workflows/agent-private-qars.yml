@@ -34,12 +34,12 @@ jobs:
           import re
           import sys
           body=os.environ.get("REQUEST_BODY","").strip()
-          match=re.fullmatch(r"source_sha: ([0-9a-f]{40})\\nsuite: qars-rankfree-222",body)
+          match=re.fullmatch(r"source_sha: ([0-9a-f]{40})\nsuite: qars-rankfree-222",body)
           if match is None:
               print("::error::Expected source_sha: <40-hex> followed by suite: qars-rankfree-222.")
               sys.exit(1)
           with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
-              out.write("source_sha="+match.group(1)+"\\n")
+              out.write("source_sha="+match.group(1)+"\n")
           print("Authenticated owner requested QARS #222 on exact private source SHA.")
           PY
       - name: Dispatch existing private read-only QARS workflow
