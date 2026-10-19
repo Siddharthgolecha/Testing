@@ -1,0 +1,66 @@
+name: Agent-requested QARS private run
+
+# Only owner-authored, fixed-shape issues on trusted Testing/main can request
+# this exact private suite. Never run with credentials from a PR or fork.
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    name: Validate exact private source and request ephemeral QARS test
+    if: ${{ github.event.issue.user.id == 40235858 && github.event.issue.title == '[qars-ci] run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+      actions: write
+      issues: write
+    env:
+      REQUEST_BODY: ${{ github.event.issue.body }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Validate precise owner-supplied source commit
+        id: request
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+          body=os.environ.get("REQUEST_BODY","").strip()
+          match=re.fullmatch(r"source_sha: ([0-9a-f]{40})\\nsuite: qars-rankfree-222",body)
+          if match is None:
+              print("::error::Expected source_sha: <40-hex> followed by suite: qars-rankfree-222.")
+              sys.exit(1)
+          with open(os.environ["GITHUB_OUTPUT"],"a",encoding="utf-8") as out:
+              out.write("source_sha="+match.group(1)+"\\n")
+          print("Authenticated owner requested QARS #222 on exact private source SHA.")
+          PY
+      - name: Dispatch existing private read-only QARS workflow
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          gh api --method POST \
+            /repos/Siddharthgolecha/Testing/actions/workflows/private-coalescent-ci.yml/dispatches \
+            -f ref=main \
+            -f "inputs[source_ref]=$SOURCE_SHA" \
+            -f 'inputs[suite]=qars-rankfree-222'
+          echo 'Ephemeral private QARS #222 workflow dispatch accepted; PASS is not yet established.'
+      - name: Acknowledge dispatch in owner request issue
+        shell: bash
+        env:
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          gh issue comment "$ISSUE_NUMBER" --repo Siddharthgolecha/Testing \
+            --body "Dispatched \`qars-rankfree-222\` for private SHA \`$SOURCE_SHA\`. Check [private validation runs](https://github.com/Siddharthgolecha/Testing/actions/workflows/private-coalescent-ci.yml). Acceptance does not imply pass."
+          gh issue close "$ISSUE_NUMBER" --repo Siddharthgolecha/Testing \
+            --reason completed
