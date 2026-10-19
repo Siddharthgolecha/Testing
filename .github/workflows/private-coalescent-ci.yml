@@ -39,6 +39,7 @@ on:
           - history-payoff-49
           - qars-dynamic
           - qars-formula-210
+          - qars-rankfree-222
         default: schi-next
 
 permissions:
@@ -76,13 +77,13 @@ jobs:
           fi
 
       - name: Install public Qiskit dependencies (no private source yet)
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' || (inputs.suite || 'timeline-19') == 'qars-rankfree-222' }}
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Install pinned public Python dependencies without caching output
-        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'schi-next' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-krk' || (inputs.suite || 'timeline-19') == 'theory-controller' || (inputs.suite || 'timeline-19') == 'web-krk' || (inputs.suite || 'timeline-19') == 'uniform-krk' || (inputs.suite || 'timeline-19') == 'uniform-black-krk' || (inputs.suite || 'timeline-19') == 'materialized-krk' || (inputs.suite || 'timeline-19') == 'timeline-19' || (inputs.suite || 'timeline-19') == 'hamiltonian-206' || (inputs.suite || 'timeline-19') == 'hamiltonian-207' || (inputs.suite || 'timeline-19') == 'hamiltonian-208' || (inputs.suite || 'timeline-19') == 'game-tree-11' || (inputs.suite || 'timeline-19') == 'optimal-34-native' || (inputs.suite || 'timeline-19') == 'qars-formula-210' || (inputs.suite || 'timeline-19') == 'qars-rankfree-222' }}
         run: |
           log_file="$(mktemp "$RUNNER_TEMP/public-deps.XXXXXX")"
           trap 'rm -f "$log_file"' EXIT
@@ -873,6 +874,87 @@ jobs:
           fi
           echo 'QARS rank-free five-family cost accounting: PASS.'
           echo 'QARS formula-discovery all nineteen suites: PASS (no private source exposed).'
+
+      # Exact-source QARS rank-free PR #222: no private diagnostics, artifacts,
+      # cached source, dynamic test selectors or untrusted PR event execution.
+      - name: Verify QARS rank-free indexed game oracle and real Aer resources
+        if: ${{ inputs.suite == 'qars-rankfree-222' }}
+        working-directory: private-src
+        timeout-minutes: 35
+        run: |
+          set -euo pipefail
+          work="$RUNNER_TEMP/private-qars-rankfree"
+          mkdir -m 700 -p "$work"
+          trap 'rm -rf -- "$work"' EXIT
+          test_path=chess/experiments/piece_square_play/test_qars_rankfree_indexed.py
+          native_path=chess/experiments/piece_square_play/qars_rankfree_native_receipt.py
+          benchmark_path=chess/experiments/piece_square_play/qars_rankfree_benchmark.py
+          for file in "$test_path" "$native_path" "$benchmark_path"; do
+            if [[ ! -f "$file" ]]; then
+              echo '::error::Expected private rank-free suite file is missing.'
+              exit 1
+            fi
+          done
+          if ! python -c 'import qiskit, qiskit_aer, numpy' >"$work/deps.log" 2>&1; then
+            echo '::error::Qiskit, Aer and NumPy are required (no simulated substitute).'
+            exit 1
+          fi
+          if ! timeout 950s python -B -m unittest discover \
+              -s chess/experiments/piece_square_play \
+              -p 'test_qars_rankfree_indexed.py' -v \
+              >"$work/tests.log" 2>&1; then
+            echo '::error::Private QARS rank-free exact-head unittest failed. Tracebacks suppressed.'
+            exit 1
+          fi
+          if grep -Eq 'skipped=[1-9]|FAILED|ERROR' "$work/tests.log"; then
+            echo '::error::QARS rank-free tests failed or unexpectedly skipped.'
+            exit 1
+          fi
+          echo 'QARS rank-free indexed private unittest: PASS (no skips).'
+          if ! timeout 480s python -B "$benchmark_path" \
+              >"$work/bench.log" 2>&1; then
+            echo '::error::Private QARS independent cost benchmark failed; output withheld.'
+            exit 1
+          fi
+          if ! python - "$work/bench.log" <<'PY'
+          import json,sys
+          cases=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert len(cases)==5
+          assert all(row["classical"]["tree_nodes"] >= row["classical"]["memo_state_time_evaluations"] for row in cases)
+          assert all(row["quantum_compile_budget"]["native_cx"] is None for row in cases)
+          print("QARS independent synthetic cost accounting: PASS (5 families).")
+          PY
+          then
+            echo '::error::Private QARS benchmark metadata validation failed.'
+            exit 1
+          fi
+          if ! timeout 480s python -B "$native_path" \
+              >"$work/native.log" 2>&1; then
+            echo '::error::Private QARS native Qiskit/Aer receipt failed; diagnostics suppressed.'
+            exit 1
+          fi
+          if ! python - "$work/native.log" <<'PY'
+          import json,sys
+          receipt=json.load(open(sys.argv[1],encoding="utf-8"))
+          assert receipt["status"]=="PASS" and receipt["actual_aer_executed"] is True
+          assert receipt["statevector_checks"]==2
+          assert receipt["native_cx"]>0 and receipt["native_depth"]>0
+          assert receipt["logical_qubits"]<=12
+          print("QARS_RANKFREE_NATIVE "+json.dumps({
+              "status":receipt["status"],
+              "logical_qubits":receipt["logical_qubits"],
+              "basis":receipt["native_basis"],
+              "cx":receipt["native_cx"],
+              "depth":receipt["native_depth"],
+              "one_qubit_ops":receipt["native_one_qubit_ops"],
+              "aer_statevector_checks":receipt["statevector_checks"]},
+              sort_keys=True))
+          PY
+          then
+            echo '::error::QARS native measurements unavailable or invalid (fail closed).'
+            exit 1
+          fi
+          echo 'QARS rank-free 222: exact-source tests, benchmark, and actual Aer PASS.'
 
       - name: Validate ordered 35q temporal and eight-history 38q quantum evolution
         if: ${{ inputs.suite == 'timeline-35' }}
