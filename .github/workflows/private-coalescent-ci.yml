@@ -41,6 +41,7 @@ on:
           - qars-formula-210
           - qars-rankfree-222
           - adversarial-work-lean
+          - transaction-guard-lean
         default: schi-next
 
 permissions:
@@ -119,16 +120,74 @@ jobs:
           fi
           echo 'Private SCHI-Next suite: PASS (individual private test output suppressed).'
 
+      - name: Checkout pinned all-board KRK geometric proof for guard verification
+        if: ${{ inputs.suite == 'transaction-guard-lean' }}
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/coalescent-research
+          ref: d28bf8996cca2eadefe55ab0fbb52b5f5be2ea5d
+          path: krk-base
+          ssh-key: ${{ secrets.COALESCENT_DEPLOY_KEY }}
+          ssh-strict: true
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' || (inputs.suite || 'timeline-19') == 'geometric-controller-lean' || inputs.suite == 'adversarial-work-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' || (inputs.suite || 'timeline-19') == 'geometric-controller-lean' || inputs.suite == 'adversarial-work-lean' || inputs.suite == 'transaction-guard-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
-          lake-package-directory: private-src/lean-proofs
+          lake-package-directory: ${{ inputs.suite == 'transaction-guard-lean' && 'krk-base/lean-proofs' || 'private-src/lean-proofs' }}
           auto-config: 'false'
           build: 'false'
           leanchecker: false
           use-mathlib-cache: 'true'
           use-github-cache: 'false'
+
+      - name: Build pinned KRK coverage and check arbitrary-choice transaction guard
+        if: ${{ inputs.suite == 'transaction-guard-lean' }}
+        working-directory: krk-base/lean-proofs
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]]; then
+            echo '::error::Transaction guard verification requires an exact source commit.'
+            exit 1
+          fi
+          test "$(git -C ../../private-src rev-parse HEAD)" = "$SOURCE_REF"
+          test "$(git rev-parse HEAD)" = d28bf8996cca2eadefe55ab0fbb52b5f5be2ea5d
+          build_log="$(mktemp "$RUNNER_TEMP/private-lean.XXXXXX")"
+          proof_log="$(mktemp "$RUNNER_TEMP/private-lean.XXXXXX")"
+          trap 'rm -f "$build_log" "$proof_log"' EXIT
+          if ! timeout 2700s lake build RecordAlgebra.Chess.GeneralArbitraryBoardKRKTheorem >"$build_log" 2>&1; then
+            echo '::error::Pinned KRK coverage build failed; private diagnostics withheld.'
+            exit 1
+          fi
+          if ! timeout 180s python3 scripts/check_no_sorry.py --roots RecordAlgebra.Chess.GeneralArbitraryBoardKRKTheorem >>"$build_log" 2>&1; then
+            echo '::error::Pinned KRK transitive proof-hole scan failed; private diagnostics withheld.'
+            exit 1
+          fi
+          echo 'Pinned arbitrary-board KRK coverage and transitive source scan: PASS.'
+          proof=../../private-src/research/chess/adversarial_response_20261020/lean/TransactionGuardKRK.lean
+          if ! timeout 600s lake env lean "$proof" >"$proof_log" 2>&1; then
+            echo '::error::Transaction guard proof failed; private diagnostics withheld.'
+            exit 1
+          fi
+          if ! python3 ../../private-src/scripts/check_lean_truth_boundary.py "$proof" >>"$proof_log" 2>&1; then
+            echo '::error::Transaction guard truth-boundary check failed; private diagnostics withheld.'
+            exit 1
+          fi
+          python3 - "$proof_log" <<'PYCODE'
+          import pathlib, re, sys
+          log = pathlib.Path(sys.argv[1]).read_text()
+          groups = re.findall(r'depends on axioms:\s*\[(.*?)\]', log, re.S)
+          allowed = {'propext', 'Classical.choice', 'Quot.sound'}
+          if len(groups) != 5 or any(set(re.findall(r'[A-Za-z][\w.]*', g)) - allowed for g in groups):
+              raise SystemExit('::error::Transaction guard axiom audit failed; private diagnostics withheld.')
+          print('Arbitrary-choice transaction guard, game semantics bridge, memory reduction, and axiom audit: PASS.')
+          PYCODE
 
       - name: Compile and audit standalone private adversarial theorem
         if: ${{ inputs.suite == 'adversarial-work-lean' }}
@@ -1064,7 +1123,7 @@ jobs:
       - name: Remove temporary private checkout and reports
         if: always()
         run: |
-          rm -rf -- "$GITHUB_WORKSPACE/private-src" "$GITHUB_WORKSPACE/canonical-src"
+          rm -rf -- "$GITHUB_WORKSPACE/private-src" "$GITHUB_WORKSPACE/canonical-src" "$GITHUB_WORKSPACE/krk-base"
           rm -f -- "$RUNNER_TEMP"/private-python.* "$RUNNER_TEMP"/private-lean.* \
             "$RUNNER_TEMP"/private-krk.* "$RUNNER_TEMP"/private-qiskit-krk.* "$RUNNER_TEMP"/private-krk-lean.* \
             "$RUNNER_TEMP"/private-trie-verify.* "$RUNNER_TEMP"/private-trie-qiskit.*
