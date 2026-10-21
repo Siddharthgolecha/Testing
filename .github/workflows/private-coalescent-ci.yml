@@ -45,6 +45,7 @@ on:
           - geometric-intervals-lean
           - multiround-family-lean
           - neighbour-summary-lean
+          - collision-kernel-lean
         default: schi-next
 
 permissions:
@@ -138,7 +139,7 @@ jobs:
           lfs: false
 
       - name: Configure Lean 4 and Mathlib without public build cache
-        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' || (inputs.suite || 'timeline-19') == 'geometric-controller-lean' || inputs.suite == 'adversarial-work-lean' || inputs.suite == 'transaction-guard-lean' || inputs.suite == 'geometric-intervals-lean' || inputs.suite == 'multiround-family-lean' }}
+        if: ${{ (inputs.suite || 'timeline-19') == 'lean-smoke' || (inputs.suite || 'timeline-19') == 'both' || (inputs.suite || 'timeline-19') == 'theory-lean' || (inputs.suite || 'timeline-19') == 'general-krk-lean' || (inputs.suite || 'timeline-19') == 'geometric-controller-lean' || inputs.suite == 'adversarial-work-lean' || inputs.suite == 'transaction-guard-lean' || inputs.suite == 'geometric-intervals-lean' || inputs.suite == 'multiround-family-lean' || inputs.suite == 'collision-kernel-lean' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865 # v1.6.1
         with:
           lake-package-directory: ${{ inputs.suite == 'transaction-guard-lean' && 'krk-base/lean-proofs' || 'private-src/lean-proofs' }}
@@ -262,6 +263,38 @@ jobs:
           if len(lists)!=3 or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
               raise SystemExit('Private neighbour standard-axiom audit failed; diagnostics withheld.')
           print('Exact-source private neighbour theorem: compile, truth boundary and three standard-axiom closures PASS.')
+          PYCODE
+
+      - name: Compile and audit exact private collision kernel
+        if: ${{ inputs.suite == 'collision-kernel-lean' }}
+        working-directory: private-src/lean-proofs
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]] || [[ "$(git rev-parse HEAD)" != "$SOURCE_REF" ]]; then
+            echo '::error::Exact checked-out private source SHA required.'
+            exit 1
+          fi
+          proof=../research/chess/adversarial_response_20261020/parallel/multiround_symbolic/CollisionKernel.lean
+          log_file="$(mktemp "$RUNNER_TEMP/private-collision.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 1200s lake env lean "$proof" >"$log_file" 2>&1; then
+            echo '::error::Private collision kernel compile failed; diagnostics withheld.'
+            exit 1
+          fi
+          if ! python3 ../scripts/check_lean_truth_boundary.py "$proof" >>"$log_file" 2>&1; then
+            echo '::error::Private collision truth-boundary failed; diagnostics withheld.'
+            exit 1
+          fi
+          python3 - "$log_file" <<'PYCODE'
+          import pathlib,re,sys
+          text=pathlib.Path(sys.argv[1]).read_text()
+          lists=re.findall(r'depends on axioms:\s*\[(.*?)\]',text,re.S)
+          allowed={'propext','Classical.choice','Quot.sound'}
+          if len(lists)!=3 or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
+              raise SystemExit('Private collision standard-axiom audit failed; diagnostics withheld.')
+          print('Exact-source private collision kernel: compile, truth boundary and three standard-axiom closures PASS.')
           PYCODE
 
       - name: Compile and audit private multiround family geometry
