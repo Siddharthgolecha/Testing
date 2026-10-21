@@ -245,12 +245,30 @@ jobs:
             echo '::error::Private multiround family geometry truth-boundary check failed.'
             exit 1
           fi
+          boundary=../research/chess/adversarial_response_20261020/parallel/multiround_symbolic/BoundaryPlan.lean
+          if [[ -f "$boundary" ]]; then
+            proof_dir="$(dirname "$proof")"
+            compiled_dir="$(mktemp -d "$RUNNER_TEMP/private-boundary.XXXXXX")"
+            trap 'rm -f "$log_file"; rm -rf "$compiled_dir"' EXIT
+            if ! timeout 1200s lake env lean -R "$proof_dir" -o "$compiled_dir/TwoRoundFamily.olean" "$proof" >"$log_file" 2>&1; then
+              echo '::error::Private family dependency compile failed; diagnostics withheld.'
+              exit 1
+            fi
+            if ! LEAN_PATH="$compiled_dir" timeout 1200s lake env lean "$boundary" >>"$log_file" 2>&1; then
+              echo '::error::Private boundary geometry failed; diagnostics withheld.'
+              exit 1
+            fi
+            if ! python3 ../scripts/check_lean_truth_boundary.py "$boundary" >>"$log_file" 2>&1; then
+              echo '::error::Private boundary truth-boundary check failed.'
+              exit 1
+            fi
+          fi
           python3 - "$log_file" <<'PYCODE'
           import pathlib,re,sys
           text=pathlib.Path(sys.argv[1]).read_text()
           lists=re.findall(r'depends on axioms:\s*\[(.*?)\]',text,re.S)
           allowed={'propext','Classical.choice','Quot.sound'}
-          if len(lists) not in (8,16) or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
+          if len(lists) not in (8,16,27) or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
               raise SystemExit('Private interval axiom audit failed; diagnostics withheld.')
           print(f'Private multiround family geometry: PASS; {len(lists)} declarations use only standard logical axioms.')
           PYCODE
