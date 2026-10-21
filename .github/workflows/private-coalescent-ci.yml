@@ -44,6 +44,7 @@ on:
           - transaction-guard-lean
           - geometric-intervals-lean
           - multiround-family-lean
+          - neighbour-summary-lean
         default: schi-next
 
 permissions:
@@ -221,6 +222,46 @@ jobs:
           if len(lists)!=3 or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
               raise SystemExit('Private interval axiom audit failed; diagnostics withheld.')
           print('Private interval arithmetic: PASS; three declarations use only standard logical axioms.')
+          PYCODE
+
+      - name: Install standalone Lean toolchain for neighbour proof
+        if: ${{ inputs.suite == 'neighbour-summary-lean' }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -o "$RUNNER_TEMP/elan-init.sh"
+          sh "$RUNNER_TEMP/elan-init.sh" -y --default-toolchain leanprover/lean4:v4.32.1
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Compile and audit exact private neighbour proof
+        if: ${{ inputs.suite == 'neighbour-summary-lean' }}
+        working-directory: private-src
+        env:
+          SOURCE_REF: ${{ inputs.source_ref }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$SOURCE_REF" =~ ^[0-9a-f]{40}$ ]] || [[ "$(git rev-parse HEAD)" != "$SOURCE_REF" ]]; then
+            echo '::error::Exact checked-out private source SHA required.'
+            exit 1
+          fi
+          proof=research/chess/adversarial_response_20261020/parallel/multiround_symbolic/NeighbourCompleteness.lean
+          log_file="$(mktemp "$RUNNER_TEMP/private-neighbour.XXXXXX")"
+          trap 'rm -f "$log_file"' EXIT
+          if ! timeout 180s lean +leanprover/lean4:v4.32.1 "$proof" >"$log_file" 2>&1; then
+            echo '::error::Private neighbour theorem compile failed; diagnostics withheld.'
+            exit 1
+          fi
+          if ! python3 scripts/check_lean_truth_boundary.py "$proof" >>"$log_file" 2>&1; then
+            echo '::error::Private neighbour truth-boundary failed; diagnostics withheld.'
+            exit 1
+          fi
+          python3 - "$log_file" <<'PYCODE'
+          import pathlib,re,sys
+          text=pathlib.Path(sys.argv[1]).read_text()
+          lists=re.findall(r'depends on axioms:\s*\[(.*?)\]',text,re.S)
+          allowed={'propext','Classical.choice','Quot.sound'}
+          if len(lists)!=3 or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
+              raise SystemExit('Private neighbour standard-axiom audit failed; diagnostics withheld.')
+          print('Exact-source private neighbour theorem: compile, truth boundary and three standard-axiom closures PASS.')
           PYCODE
 
       - name: Compile and audit private multiround family geometry
