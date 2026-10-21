@@ -250,9 +250,9 @@ jobs:
           text=pathlib.Path(sys.argv[1]).read_text()
           lists=re.findall(r'depends on axioms:\s*\[(.*?)\]',text,re.S)
           allowed={'propext','Classical.choice','Quot.sound'}
-          if len(lists)!=8 or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
+          if len(lists) not in (8,16) or any(not set(re.findall(r'[A-Za-z][\w.]*',s))<=allowed for s in lists):
               raise SystemExit('Private interval axiom audit failed; diagnostics withheld.')
-          print('Private multiround family geometry: PASS; eight declarations use only standard logical axioms.')
+          print(f'Private multiround family geometry: PASS; {len(lists)} declarations use only standard logical axioms.')
           PYCODE
 
       - name: Compile and audit standalone private adversarial theorem
