@@ -28,6 +28,7 @@ on:
           - live-qiskit-build
           - physical-xy-echo
           - joint-xy-trotter
+          - local-projector
           - lean-causal
           - lean-frustration
           - lean-boundary
@@ -77,7 +78,7 @@ jobs:
                    'qiskit-full-build', 'spectral-causal',
                    'live-frustration', 'live-spectrum',
                    'live-qiskit-build', 'physical-xy-echo',
-                   'joint-xy-trotter',
+                   'joint-xy-trotter', 'local-projector',
                    'lean-causal', 'lean-frustration', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
@@ -155,7 +156,7 @@ jobs:
           echo 'Private CheQ source syntax: PASS.'
 
       - name: Install pinned Qiskit and Aer for CheQ native gate checks
-        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' || steps.request.outputs.suite == 'live-spectrum' || steps.request.outputs.suite == 'live-qiskit-build' || steps.request.outputs.suite == 'physical-xy-echo' || steps.request.outputs.suite == 'joint-xy-trotter' }}
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' || steps.request.outputs.suite == 'live-spectrum' || steps.request.outputs.suite == 'live-qiskit-build' || steps.request.outputs.suite == 'physical-xy-echo' || steps.request.outputs.suite == 'joint-xy-trotter' || steps.request.outputs.suite == 'local-projector' }}
         run: |
           set -euo pipefail
           logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
@@ -250,6 +251,7 @@ jobs:
             live-qiskit-build) pattern='test_qiskit_live_failure_phase.py' ;;
             physical-xy-echo) pattern='test_physical_xy_policy_echo.py' ;;
             joint-xy-trotter) pattern='test_joint_live_xy_trotter100.py' ;;
+            local-projector) pattern='test_local_occupation_legality.py' ;;
             lean-causal) echo 'Lean suite should skip Python tests'; exit 1 ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
