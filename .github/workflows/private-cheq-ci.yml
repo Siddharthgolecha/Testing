@@ -375,6 +375,36 @@ jobs:
             grep '^CHECKED_Q2_LOCAL_ACTION_SCALARS_ONLY' "$metrics" || true
             rm -f "$metrics"
           fi
+          if [[ "$SUITE" == 'onehot-white-actions' ]]; then
+            metrics="$(mktemp "$RUNNER_TEMP/cheq-onehot-metrics.XXXXXX")"
+            if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$metrics" 2>&1 <<'PY'
+          from onehot_local_white_actions100 import resource_report_hot
+          from qiskit import QuantumCircuit,transpile
+          from qiskit.circuit.library import PhaseGate
+          r=resource_report_hot()
+          def native_cx(controls):
+              qc=QuantumCircuit(controls+1)
+              qc.append(PhaseGate(-.27).control(controls),list(range(controls+1)))
+              return transpile(qc,basis_gates=['x','sx','rz','cx'],optimization_level=0).count_ops().get('cx',0)
+          print('CHECKED_Q2_ONEHOT_RESOURCE_SCALARS_ONLY'
+                +' logical_qubits='+str(r['logical_qubits'])
+                +' original_max_locality='+str(r['max_operator_locality'])
+                +' compressed_max_locality='+str(r['compressed_max_operator_locality'])
+                +' diagonal_projectors='+str(r['compressed_projector_terms'])
+                +' original_high_level='+str(r['total_Qiskit_high_level_instructions'])
+                +' onehot_high_level='+str(r['compressed_Qiskit_high_level_instructions'])
+                +' destination_decode_blocks='+str(r['hot_compute_uncompute_mcx'])
+                +' representative_7local_native_CX='+str(native_cx(6))
+                +' representative_4local_native_CX='+str(native_cx(3)))
+          PY
+            then
+              echo '::error::Private Q2 onehot metric calculation failed; diagnostics suppressed.'
+              rm -f "$metrics"
+              exit 1
+            fi
+            grep '^CHECKED_Q2_ONEHOT_RESOURCE_SCALARS_ONLY' "$metrics" || true
+            rm -f "$metrics"
+          fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
       - name: Cleanup ephemeral private checkout
