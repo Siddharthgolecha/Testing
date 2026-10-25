@@ -339,6 +339,39 @@ jobs:
             grep '^CHECKED_Q2_RESOURCE_METRICS_ONLY' "$metric_log" || true
             rm -f "$metric_log"
           fi
+          if [[ "$SUITE" == 'white-local-actions' ]]; then
+            # Safe scalar resource metrics, no private source or tracebacks.
+            metrics="$(mktemp "$RUNNER_TEMP/cheq-local-action-metrics.XXXXXX")"
+            if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$metrics" 2>&1 <<'PY'
+          from local_white_action_hamiltonian100 import resource_report
+          from typed_local_geometry_projectors import resources as typed_resources
+          from qiskit import QuantumCircuit,transpile
+          from qiskit.circuit.library import PhaseGate
+          report=resource_report()
+          typed=typed_resources()
+          two=QuantumCircuit(2);two.append(PhaseGate(-.23).control(1),[0,1])
+          seven=QuantumCircuit(7);seven.append(PhaseGate(-.23).control(6),list(range(7)))
+          two_cx=transpile(two,basis_gates=['x','sx','rz','cx'],optimization_level=0).count_ops().get('cx',0)
+          seven_cx=transpile(seven,basis_gates=['x','sx','rz','cx'],optimization_level=0).count_ops().get('cx',0)
+          print('CHECKED_Q2_LOCAL_ACTION_SCALARS_ONLY'
+                +' all_white_action_templates='+str(report['compiled_geometric_templates'])
+                +' white_action_diagonal_projector_terms='+str(report['diagonal_projector_terms'])
+                +' white_action_max_locality='+str(report['max_operator_locality'])
+                +' white_action_full_high_level_instructions='+str(report['total_Qiskit_high_level_instructions'])
+                +' rook_attack_terms='+str(typed['projectors']['rook-check']['terms'])
+                +' king_adjacency_terms='+str(typed['projectors']['king-adjacency']['terms'])
+                +' rook_capture_terms='+str(typed['projectors']['rook-capture']['terms'])
+                +' native_2local_CX='+str(two_cx)
+                +' native_7local_CX='+str(seven_cx))
+          PY
+            then
+              echo '::error::Private local-projector resource measurement failed; hidden diagnostics.'
+              rm -f "$metrics"
+              exit 1
+            fi
+            grep '^CHECKED_Q2_LOCAL_ACTION_SCALARS_ONLY' "$metrics" || true
+            rm -f "$metrics"
+          fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
       - name: Cleanup ephemeral private checkout
