@@ -64,7 +64,7 @@ theorem conjecture_iff_sieve_survival :
 def CertifiedThrough (limit : ℕ) : Prop :=
   ∀ n : Fin (limit + 1),
     4 ≤ n.val →
-    Even n.val →
+    n.val % 2 = 0 →
       ∃ p : Fin (n.val + 1),
         Nat.Prime p.val ∧ Nat.Prime (n.val - p.val)
 
@@ -78,7 +78,9 @@ theorem certifiedThrough_sound {limit n : ℕ}
     (hmin : 4 ≤ n) (hmax : n ≤ limit) (heven : Even n) :
     GoldbachAt n := by
   have hn : n < limit + 1 := by omega
-  obtain ⟨p, hp, hq⟩ := hcert ⟨n, hn⟩ hmin heven
+  rcases heven with ⟨k, hk⟩
+  have hmod : n % 2 = 0 := by omega
+  obtain ⟨p, hp, hq⟩ := hcert ⟨n, hn⟩ hmin hmod
   have hp_bound : p.val < n + 1 := by simpa using p.isLt
   have hp_le : p.val ≤ n := by omega
   exact ⟨p.val, n - p.val, hp, hq, by omega⟩
