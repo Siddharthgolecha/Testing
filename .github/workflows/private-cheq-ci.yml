@@ -23,6 +23,7 @@ on:
           - qiskit-native
           - qiskit-full-build
           - spectral-causal
+          - live-frustration
           - lean-causal
           - lean-boundary
         default: action-search
@@ -69,6 +70,7 @@ jobs:
           allow = {'action-search', 'tagged-hopping', 'counter98',
                    'geometry', 'compact-compile', 'qiskit-native',
                    'qiskit-full-build', 'spectral-causal',
+                   'live-frustration',
                    'lean-causal', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
@@ -233,6 +235,7 @@ jobs:
             qiskit-native) pattern='test_native_qiskit_receipts.py' ;;
             qiskit-full-build) pattern='test_full_qiskit_construction.py' ;;
             spectral-causal) pattern='test_spectral_*.py' ;;
+            live-frustration) pattern='test_live_failure_phase100.py' ;;
             lean-causal) echo 'Lean suite should skip Python tests'; exit 1 ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
