@@ -545,6 +545,41 @@ jobs:
           fi
           grep '^CHECKED_Q2_SCATTER_NATIVE_SCALARS_ONLY' "$file" || true
 
+      - name: Report scalar-only White safety projector costs
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          report="$(mktemp "$RUNNER_TEMP/cheq-safety-scalars.XXXXXX")"
+          trap 'rm -f "$report"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$report" 2>&1 <<'PY'
+          from one_ply_unary_occupation import build_qiskit
+          from qiskit import transpile
+          options=(
+              ('unfiltered',dict()),
+              ('safety',dict(safety_filter=True)),
+              ('safety_scatter',dict(safety_filter=True,
+                   phase_gamma=3.,mix_beta=.8,mix_slices=6)),
+          )
+          for label,kwargs in options:
+              raw,info=build_qiskit(4,0,1,6,**kwargs)
+              qc=transpile(raw,basis_gates=['x','sx','rz','cx'],
+                           optimization_level=0)
+              print('CHECKED_Q2_SAFETY_NATIVE_SCALARS_ONLY'
+                    +' variant='+label
+                    +' qubits='+str(qc.num_qubits)
+                    +' cx='+str(qc.count_ops().get('cx',0))
+                    +' depth='+str(qc.depth())
+                    +' native_instructions='+str(qc.size())
+                    +' base_herald='+str(info['success_probability'])
+                    +' safety_herald='+str(info['safe_herald_probability']))
+          PY
+          then
+            echo '::error::Private safety resource audit failed; output suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_SAFETY_NATIVE_SCALARS_ONLY' "$report" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
