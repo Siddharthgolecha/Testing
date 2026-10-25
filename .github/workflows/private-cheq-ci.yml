@@ -268,7 +268,7 @@ jobs:
           if ! timeout 2400s python -B -m unittest discover \
             -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
             >"$logfile" 2>&1; then
-            if [[ "$SUITE" == 'live-frustration' || "$SUITE" == 'joint-xy-trotter' ]]; then
+            if [[ "$SUITE" == 'live-frustration' || "$SUITE" == 'joint-xy-trotter' || "$SUITE" == 'typed-geometry' ]]; then
               python3 - "$logfile" <<'PY'
           import pathlib,re,sys
           text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
