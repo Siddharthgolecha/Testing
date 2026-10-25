@@ -83,6 +83,14 @@ jobs:
           print(f'Authorized owner-only CheQ suite: {suite}; exact source SHA validated.')
           PY
 
+      - name: Checkout public Testing diagnostic key only
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' }}
+        uses: actions/checkout@v4
+        with:
+          path: public-tooling
+          persist-credentials: false
+          fetch-depth: 1
+
       - name: Ensure dedicated read-only CheQ deploy key exists
         env:
           CHEQ_KEY: ${{ secrets.CHEQ_DEPLOY_KEY }}
@@ -171,7 +179,33 @@ jobs:
             exit 1
           fi
           if ! timeout 1800s lake env lean "$source" >"$logfile" 2>&1; then
-            echo '::error::Finite Q2 boundary Lean compilation FAIL or TIMEOUT; diagnostics suppressed.'
+            python3 - "$logfile" "$GITHUB_WORKSPACE/public-tooling/diagnostics/cheq-lean-debug-oct25.pub" <<'PY'
+          import base64, pathlib, re, subprocess, sys, tempfile
+          source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+          matches = re.findall(r"(?m)^.*?:\d+:\d+: error:.*$", source)
+          if not matches:
+              matches = [line for line in source.splitlines()
+                         if 'error:' in line.lower() or 'failed' in line.lower()][-4:]
+          diagnostic = "\n".join(matches[:3]).encode("utf-8")[:270]
+          if not diagnostic:
+              diagnostic = b"Lean failed without a recognized error marker."
+          with tempfile.TemporaryDirectory() as td:
+              root = pathlib.Path(td)
+              plain, encrypted = root/'detail', root/'cipher'
+              plain.write_bytes(diagnostic)
+              result = subprocess.run(
+                  ['openssl','pkeyutl','-encrypt','-pubin','-inkey',sys.argv[2],
+                   '-pkeyopt','rsa_padding_mode:oaep',
+                   '-pkeyopt','rsa_oaep_md:sha256',
+                   '-in',str(plain),'-out',str(encrypted)],
+                  stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+              if result.returncode == 0:
+                  print("ENCRYPTED_CHEQ_LEAN_DIAG_RSA_OAEP_SHA256=" +
+                        base64.b64encode(encrypted.read_bytes()).decode("ascii"))
+              else:
+                  print("::warning::Encrypted Lean diagnosis unavailable.")
+          PY
+            echo '::error::Finite Q2 boundary Lean compilation FAIL or TIMEOUT; only encrypted diagnostics above.'
             exit 1
           fi
           echo 'Lean Q2 AND/OR threshold + mate/stalemate + XOR specification: PASS.'
