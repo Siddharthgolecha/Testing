@@ -655,7 +655,7 @@ jobs:
           from entry_fuel_adversarial_audit import evaluate_root
           for root in ((0,1,6),(0,6,13),(1,5,14)):
               for horizon in (1,2,5):
-                  for policy in ('uniform','mixed'):
+                  for policy in ('uniform','mixed','threshold'):
                       a=evaluate_root(4,*root,fuel=horizon,mode=policy)
                       print('CHECKED_Q2_ENTRY_FUEL_SCALARS_ONLY'
                             +' root='+','.join(map(str,root))
