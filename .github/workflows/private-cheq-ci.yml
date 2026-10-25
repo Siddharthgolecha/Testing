@@ -271,6 +271,9 @@ jobs:
           errors=re.findall(r'(?m)^(AssertionError|ImportError|TypeError|ValueError|AttributeError|RuntimeError|ModuleNotFoundError):',text)
           print('Private CheQ failure categories only: ' + ','.join(failures[:6]) +
                 '; errors=' + ','.join(errors[:6]))
+          if 'joint-xy-trotter' in sys.argv[0] or 'test_true_qiskit' in text:
+              n=re.findall(r'File \"[^\"\\n]*test_joint_live_xy_trotter100.py\", line (\\d+)',text)
+              print('Joint test failing code line numbers only: ' + ','.join(n[-8:]))
           PY
             fi
             if [[ "$SUITE" == 'spectral-causal' ]]; then
