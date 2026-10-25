@@ -682,6 +682,42 @@ jobs:
           fi
           grep '^CHECKED_Q2_ENTRY_FUEL_SCALARS_ONLY' "$scalars" || true
 
+      - name: Report scalar-only White history-veto native cost
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-memory-scalars.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from one_ply_unary_occupation import build_qiskit
+          from recent_white_geometry import summary
+          from qiskit import transpile
+          root=(4,4,1,7)
+          history=((0,1),)
+          data=summary(*root,history)
+          variants=(('safe_only',dict(safety_filter=True)),
+                    ('safe_with_memory',dict(safety_filter=True,
+                         recent_white_pairs=history)))
+          for label,kwargs in variants:
+              raw,info=build_qiskit(*root,**kwargs)
+              native=transpile(raw,basis_gates=['x','sx','rz','cx'],
+                               optimization_level=0)
+              print('CHECKED_Q2_RECENT_HISTORY_SCALARS_ONLY'
+                  +' variant='+label
+                  +' qubits='+str(native.num_qubits)
+                  +' cx='+str(native.count_ops().get('cx',0))
+                  +' depth='+str(native.depth())
+                  +' legal_safe_moves='+str(data['unrestricted_safe_moves'])
+                  +' history_safe_moves='+str(data['history_guarded_safe_moves'])
+                  +' template_count='+str(info['geometric_templates']))
+          PY
+          then
+            echo '::error::Private geometry-memory cost audit failed; diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_RECENT_HISTORY_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
