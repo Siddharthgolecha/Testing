@@ -70,7 +70,8 @@ def CertifiedThrough (limit : ℕ) : Prop :=
 
 /-- Finite computational certificate; not an asymptotic or universal proof. -/
 theorem certifiedThrough_30 : CertifiedThrough 30 := by
-  decide
+  intro n hmin hmod
+  fin_cases n <;> norm_num at hmin hmod ⊢ <;> decide
 
 /-- Any finite certificate genuinely supplies a prime pair within its bound. -/
 theorem certifiedThrough_sound {limit n : ℕ}
