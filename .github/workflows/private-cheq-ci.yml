@@ -644,6 +644,33 @@ jobs:
           fi
           grep '^CHECKED_Q2_LIVENESS_SCALARS_ONLY' "$output" || true
 
+      - name: Report scalar-only bounded entry-fuel probabilities
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          scalars="$(mktemp "$RUNNER_TEMP/cheq-entryfuel-scalars.XXXXXX")"
+          trap 'rm -f "$scalars"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$scalars" 2>&1 <<'PY'
+          from entry_fuel_adversarial_audit import evaluate_root
+          for root in ((0,1,6),(0,6,13),(1,5,14)):
+              for horizon in (1,2,5):
+                  for policy in ('uniform','mixed'):
+                      a=evaluate_root(4,*root,fuel=horizon,mode=policy)
+                      print('CHECKED_Q2_ENTRY_FUEL_SCALARS_ONLY'
+                            +' root='+','.join(map(str,root))
+                            +' fuel='+str(horizon)
+                            +' policy='+policy
+                            +' adversarial_target_hit_probability='+str(
+                               a['worst_case_target_hit_probability'])
+                            +' dp_nodes='+str(a['unique_dp_nodes']))
+          PY
+          then
+            echo '::error::Private entry-fuel scalar audit failed; diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_ENTRY_FUEL_SCALARS_ONLY' "$scalars" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
