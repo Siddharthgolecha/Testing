@@ -22,6 +22,8 @@ on:
           - compact-compile
           - qiskit-native
           - qiskit-full-build
+          - spectral-causal
+          - lean-causal
           - lean-boundary
         default: action-search
   issues:
@@ -66,7 +68,8 @@ jobs:
           import sys
           allow = {'action-search', 'tagged-hopping', 'counter98',
                    'geometry', 'compact-compile', 'qiskit-native',
-                   'qiskit-full-build', 'lean-boundary'}
+                   'qiskit-full-build', 'spectral-causal',
+                   'lean-causal', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
                   r'source_sha: ([0-9a-f]{40})\nsuite: ([a-z0-9-]+)',
@@ -85,7 +88,7 @@ jobs:
           PY
 
       - name: Checkout public Testing diagnostic key only
-        if: ${{ steps.request.outputs.suite == 'lean-boundary' }}
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' }}
         uses: actions/checkout@v4
         with:
           path: public-tooling
@@ -143,7 +146,7 @@ jobs:
           echo 'Private CheQ source syntax: PASS.'
 
       - name: Install pinned Qiskit and Aer for CheQ native gate checks
-        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' }}
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' }}
         run: |
           set -euo pipefail
           logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
@@ -172,6 +175,9 @@ jobs:
         run: |
           set -euo pipefail
           source='RecordAlgebra/QuantumChess/Q2BoundaryCertificate.lean'
+          if [[ "${{ steps.request.outputs.suite }}" == 'lean-causal' ]]; then
+            source='RecordAlgebra/QuantumChess/CausalSpectralContract.lean'
+          fi
           logfile="$(mktemp "$RUNNER_TEMP/cheq-lean.XXXXXX")"
           trap 'rm -f "$logfile"' EXIT
           [[ -f "$source" ]] || { echo '::error::Missing pinned Q2 Lean certificate.'; exit 1; }
@@ -212,7 +218,7 @@ jobs:
           echo 'Lean Q2 AND/OR threshold + mate/stalemate + XOR specification: PASS.'
 
       - name: Execute exact CheQ research suite (private output suppressed)
-        if: ${{ steps.request.outputs.suite != 'lean-boundary' }}
+        if: ${{ steps.request.outputs.suite != 'lean-boundary' && steps.request.outputs.suite != 'lean-causal' }}
         env:
           SUITE: ${{ steps.request.outputs.suite }}
         working-directory: private-src
@@ -226,6 +232,8 @@ jobs:
             compact-compile) pattern='test_assembled_gate_list.py' ;;
             qiskit-native) pattern='test_native_qiskit_receipts.py' ;;
             qiskit-full-build) pattern='test_full_qiskit_construction.py' ;;
+            spectral-causal) pattern='test_spectral_*.py' ;;
+            lean-causal) echo 'Lean suite should skip Python tests'; exit 1 ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
           test_path="Q2/experiments/hamiltonian_adaptive/$pattern"
