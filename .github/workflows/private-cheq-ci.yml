@@ -618,6 +618,32 @@ jobs:
           fi
           grep '^CHECKED_Q2_PROGRESS_SCALARS_ONLY' "$output" || true
 
+      - name: Report scalar-only stochastic liveness certificate
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-liveness-scalars.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from stochastic_liveness_certificate import finite_certificate
+          for n in (4,5,6):
+              c=finite_certificate(n,epsilon=.2)
+              print('CHECKED_Q2_LIVENESS_SCALARS_ONLY'
+                    +' board='+str(n)
+                    +' white_roots='+str(c['white_roots'])
+                    +' max_safe_actions='+str(c['maximum_safe_actions'])
+                    +' max_optimal_mate_plies='+str(c['maximum_optimal_mate_plies_from_white'])
+                    +' L_white_moves='+str(c['white_moves_bound'])
+                    +' uniform_block_prob_lower='+str(c['uniform_block_success_lower_bound'])
+                    +' mixed_block_prob_lower='+str(c['mixture_block_success_lower_bound']))
+          PY
+          then
+            echo '::error::Private stochastic liveness audit failed; diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_LIVENESS_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
