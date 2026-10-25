@@ -88,7 +88,7 @@ jobs:
           PY
 
       - name: Checkout public Testing diagnostic key only
-        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' }}
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'spectral-causal' }}
         uses: actions/checkout@v4
         with:
           path: public-tooling
@@ -246,6 +246,25 @@ jobs:
           if ! timeout 2400s python -B -m unittest discover \
             -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
             >"$logfile" 2>&1; then
+            if [[ "$SUITE" == 'spectral-causal' ]]; then
+              python3 - "$logfile" "$GITHUB_WORKSPACE/public-tooling/diagnostics/cheq-spectral-debug-oct25.pub" <<'PY'
+          import base64,pathlib,re,subprocess,sys,tempfile
+          log=pathlib.Path(sys.argv[1]).read_text(encoding='utf-8',errors='replace')
+          # Name of failing unittest plus the tail error text. Limit plaintext
+          # to RSA-OAEP size; NEVER print private traceback in public logs.
+          failures=re.findall(r'(?m)^(?:FAIL|ERROR): [^\n]+',log)
+          errors=re.findall(r'(?m)^(?:AssertionError|ImportError|AttributeError|TypeError|ValueError|ModuleNotFoundError|RuntimeError|numpy\.linalg\.LinAlgError):[^\n]*',log)
+          payload=('; '.join((failures+errors)[:3]) or 'no categorized Python failure').encode('utf-8')[:260]
+          with tempfile.TemporaryDirectory() as tmp:
+              p=pathlib.Path(tmp);src=p/'txt';out=p/'cipher';src.write_bytes(payload)
+              cmd=['openssl','pkeyutl','-encrypt','-pubin','-inkey',sys.argv[2],
+                   '-pkeyopt','rsa_padding_mode:oaep','-pkeyopt','rsa_oaep_md:sha256',
+                   '-in',str(src),'-out',str(out)]
+              if subprocess.run(cmd,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:
+                  print('ENCRYPTED_CHEQ_SPECTRAL_DIAG='+base64.b64encode(out.read_bytes()).decode())
+              else:print('::warning::Encrypted Python diagnostic unavailable.')
+          PY
+            fi
             echo "::error::Private CheQ $SUITE FAIL or TIMEOUT. Private logs intentionally suppressed."
             exit 1
           fi
