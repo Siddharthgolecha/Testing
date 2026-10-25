@@ -20,6 +20,8 @@ on:
           - counter98
           - geometry
           - compact-compile
+          - qiskit-native
+          - lean-boundary
         default: action-search
   issues:
     types: [opened]
@@ -62,7 +64,8 @@ jobs:
           import re
           import sys
           allow = {'action-search', 'tagged-hopping', 'counter98',
-                   'geometry', 'compact-compile'}
+                   'geometry', 'compact-compile', 'qiskit-native',
+                   'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
                   r'source_sha: ([0-9a-f]{40})\nsuite: ([a-z0-9-]+)',
@@ -130,7 +133,51 @@ jobs:
           fi
           echo 'Private CheQ source syntax: PASS.'
 
+      - name: Install pinned Qiskit and Aer for CheQ native gate checks
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' }}
+        run: |
+          set -euo pipefail
+          logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
+          trap 'rm -f "$logfile"' EXIT
+          if ! timeout 420s python -m pip install --disable-pip-version-check \
+            qiskit==2.2.3 qiskit-aer==0.17.2 >"$logfile" 2>&1; then
+            echo '::error::Pinned Qiskit/Aer installation failed; details suppressed.'
+            exit 1
+          fi
+          echo 'Qiskit 2.2.3 and Aer 0.17.2 installed.'
+
+      - name: Configure trusted Lean 4.32.1 / Mathlib 4.32.1
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' }}
+        uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865
+        with:
+          lake-package-directory: private-src/lean-proofs
+          auto-config: 'false'
+          build: 'false'
+          leanchecker: false
+          use-mathlib-cache: 'true'
+          use-github-cache: 'false'
+
+      - name: Compile and audit Lean finite Q2 boundary certificate
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          set -euo pipefail
+          source='RecordAlgebra/QuantumChess/Q2BoundaryCertificate.lean'
+          logfile="$(mktemp "$RUNNER_TEMP/cheq-lean.XXXXXX")"
+          trap 'rm -f "$logfile"' EXIT
+          [[ -f "$source" ]] || { echo '::error::Missing pinned Q2 Lean certificate.'; exit 1; }
+          if grep -nE '^[[:space:]]*(sorry|admit|axiom)([[:space:]]|$)' "$source" >"$logfile"; then
+            echo '::error::Q2 Lean file contains an explicit proof hole or new axiom.'
+            exit 1
+          fi
+          if ! timeout 1800s lake env lean "$source" >"$logfile" 2>&1; then
+            echo '::error::Finite Q2 boundary Lean compilation FAIL or TIMEOUT; diagnostics suppressed.'
+            exit 1
+          fi
+          echo 'Lean Q2 AND/OR threshold + mate/stalemate + XOR specification: PASS.'
+
       - name: Execute exact CheQ research suite (private output suppressed)
+        if: ${{ steps.request.outputs.suite != 'lean-boundary' }}
         env:
           SUITE: ${{ steps.request.outputs.suite }}
         working-directory: private-src
@@ -142,6 +189,7 @@ jobs:
             counter98) pattern='test_compact_reply_counter98.py' ;;
             geometry) pattern='test_live_geometry_oracle.py' ;;
             compact-compile) pattern='test_assembled_gate_list.py' ;;
+            qiskit-native) pattern='test_native_qiskit_receipts.py' ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
           test_path="Q2/experiments/hamiltonian_adaptive/$pattern"
