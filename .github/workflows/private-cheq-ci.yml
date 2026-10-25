@@ -24,6 +24,8 @@ on:
           - qiskit-full-build
           - spectral-causal
           - live-frustration
+          - live-spectrum
+          - live-qiskit-build
           - lean-causal
           - lean-boundary
         default: action-search
@@ -70,7 +72,8 @@ jobs:
           allow = {'action-search', 'tagged-hopping', 'counter98',
                    'geometry', 'compact-compile', 'qiskit-native',
                    'qiskit-full-build', 'spectral-causal',
-                   'live-frustration',
+                   'live-frustration', 'live-spectrum',
+                   'live-qiskit-build',
                    'lean-causal', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
@@ -148,7 +151,7 @@ jobs:
           echo 'Private CheQ source syntax: PASS.'
 
       - name: Install pinned Qiskit and Aer for CheQ native gate checks
-        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' }}
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' || steps.request.outputs.suite == 'live-spectrum' || steps.request.outputs.suite == 'live-qiskit-build' }}
         run: |
           set -euo pipefail
           logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
@@ -236,6 +239,8 @@ jobs:
             qiskit-full-build) pattern='test_full_qiskit_construction.py' ;;
             spectral-causal) pattern='test_spectral_*.py' ;;
             live-frustration) pattern='test_live_failure_phase100.py' ;;
+            live-spectrum) pattern='test_live_frustration_spectrum.py' ;;
+            live-qiskit-build) pattern='test_qiskit_live_failure_phase.py' ;;
             lean-causal) echo 'Lean suite should skip Python tests'; exit 1 ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
