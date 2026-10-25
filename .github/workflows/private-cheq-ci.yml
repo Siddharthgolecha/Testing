@@ -51,10 +51,10 @@ jobs:
       - name: Validate trusted exact SHA and suite
         id: request
         env:
-          EVENT_NAME: \${{ github.event_name }}
-          ISSUE_BODY: \${{ github.event.issue.body }}
-          DIRECT_SHA: \${{ inputs.source_sha }}
-          DIRECT_SUITE: \${{ inputs.suite }}
+          EVENT_NAME: ${{ github.event_name }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          DIRECT_SHA: ${{ inputs.source_sha }}
+          DIRECT_SUITE: ${{ inputs.suite }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -82,7 +82,7 @@ jobs:
 
       - name: Ensure dedicated read-only CheQ deploy key exists
         env:
-          CHEQ_KEY: \${{ secrets.CHEQ_DEPLOY_KEY }}
+          CHEQ_KEY: ${{ secrets.CHEQ_DEPLOY_KEY }}
         run: |
           if [[ -z "$CHEQ_KEY" ]]; then
             echo '::error::CHEQ_DEPLOY_KEY is missing in Testing Actions secrets. Install a new CheQ read-only deploy key; do not reuse COALESCENT_DEPLOY_KEY.'
@@ -98,8 +98,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Siddharthgolecha/CheQ
-          ref: \${{ steps.request.outputs.source_sha }}
-          ssh-key: \${{ secrets.CHEQ_DEPLOY_KEY }}
+          ref: ${{ steps.request.outputs.source_sha }}
+          ssh-key: ${{ secrets.CHEQ_DEPLOY_KEY }}
           ssh-strict: true
           persist-credentials: false
           fetch-depth: 1
@@ -109,7 +109,7 @@ jobs:
 
       - name: Check pinned checkout integrity
         env:
-          SOURCE_SHA: \${{ steps.request.outputs.source_sha }}
+          SOURCE_SHA: ${{ steps.request.outputs.source_sha }}
         run: |
           set -euo pipefail
           [[ "$(git -C private-src rev-parse HEAD)" == "$SOURCE_SHA" ]] || {
@@ -132,7 +132,7 @@ jobs:
 
       - name: Execute exact CheQ research suite (private output suppressed)
         env:
-          SUITE: \${{ steps.request.outputs.suite }}
+          SUITE: ${{ steps.request.outputs.suite }}
         working-directory: private-src
         run: |
           set -euo pipefail
