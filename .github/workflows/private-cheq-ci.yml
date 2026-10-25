@@ -237,7 +237,7 @@ jobs:
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
           test_path="Q2/experiments/hamiltonian_adaptive/$pattern"
-          if [[ ! -f "$test_path" ]]; then
+          if ! compgen -G "$test_path" >/dev/null; then
             echo "::error::Pinned CheQ suite test file is missing; refuse zero-test PASS."
             exit 1
           fi
