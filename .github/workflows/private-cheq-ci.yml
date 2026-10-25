@@ -28,6 +28,7 @@ on:
           - live-qiskit-build
           - physical-xy-echo
           - lean-causal
+          - lean-frustration
           - lean-boundary
         default: action-search
   issues:
@@ -75,7 +76,7 @@ jobs:
                    'qiskit-full-build', 'spectral-causal',
                    'live-frustration', 'live-spectrum',
                    'live-qiskit-build', 'physical-xy-echo',
-                   'lean-causal', 'lean-boundary'}
+                   'lean-causal', 'lean-frustration', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
                   r'source_sha: ([0-9a-f]{40})\nsuite: ([a-z0-9-]+)',
@@ -165,7 +166,7 @@ jobs:
           echo 'Qiskit 2.2.3 and Aer 0.17.2 installed.'
 
       - name: Configure trusted Lean 4.32.1 / Mathlib 4.32.1
-        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' }}
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'lean-frustration' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865
         with:
           lake-package-directory: private-src/lean-proofs
@@ -176,13 +177,16 @@ jobs:
           use-github-cache: 'false'
 
       - name: Compile and audit Lean finite Q2 boundary certificate
-        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' }}
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'lean-frustration' }}
         working-directory: private-src/lean-proofs
         run: |
           set -euo pipefail
           source='RecordAlgebra/QuantumChess/Q2BoundaryCertificate.lean'
           if [[ "${{ steps.request.outputs.suite }}" == 'lean-causal' ]]; then
             source='RecordAlgebra/QuantumChess/CausalSpectralContract.lean'
+          fi
+          if [[ "${{ steps.request.outputs.suite }}" == 'lean-frustration' ]]; then
+            source='RecordAlgebra/QuantumChess/GeometricFrustrationCertificate.lean'
           fi
           logfile="$(mktemp "$RUNNER_TEMP/cheq-lean.XXXXXX")"
           trap 'rm -f "$logfile"' EXIT
@@ -224,7 +228,7 @@ jobs:
           echo 'Lean Q2 AND/OR threshold + mate/stalemate + XOR specification: PASS.'
 
       - name: Execute exact CheQ research suite (private output suppressed)
-        if: ${{ steps.request.outputs.suite != 'lean-boundary' && steps.request.outputs.suite != 'lean-causal' }}
+        if: ${{ steps.request.outputs.suite != 'lean-boundary' && steps.request.outputs.suite != 'lean-causal' && steps.request.outputs.suite != 'lean-frustration' }}
         env:
           SUITE: ${{ steps.request.outputs.suite }}
         working-directory: private-src
