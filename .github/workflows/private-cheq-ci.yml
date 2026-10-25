@@ -457,6 +457,36 @@ jobs:
           fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
+      - name: Report scalar-only exact White one-ply native resources
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          metrics="$(mktemp "$RUNNER_TEMP/cheq-oneply-metrics.XXXXXX")"
+          trap 'rm -f "$metrics"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$metrics" 2>&1 <<'PY'
+          from exact_one_ply_occupation import build_qiskit,reference_statistics
+          from qiskit import transpile
+          qc,receipt=build_qiskit(4,0,1,6)
+          native=transpile(qc,basis_gates=['x','sx','rz','cx'],
+                           optimization_level=0)
+          data=reference_statistics(4,0,1,6)
+          print('CHECKED_Q2_ONE_PLY_NATIVE_SCALARS_ONLY'
+                +' logical_qubits='+str(receipt.qubits)
+                +' templates='+str(data['templates'])
+                +' legal_moves='+str(data['legal_moves'])
+                +' herald_probability='+str(data['success_probability'])
+                +' logical_instructions='+str(qc.size())
+                +' native_cx='+str(native.count_ops().get('cx',0))
+                +' native_depth='+str(native.depth())
+                +' native_instructions='+str(native.size()))
+          PY
+          then
+            echo '::error::Private White one-ply resource audit failed; diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_ONE_PLY_NATIVE_SCALARS_ONLY' "$metrics" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
