@@ -62,8 +62,9 @@ theorem conjecture_iff_sieve_survival :
 
 /-- A finite proposition with explicitly bounded witnesses and inputs. -/
 def CertifiedThrough (limit : ℕ) : Prop :=
-  ∀ n : { n : ℕ // n ∈ Finset.Icc 4 limit },
-    Even (n : ℕ) →
+  ∀ n : Fin (limit + 1),
+    4 ≤ n.val →
+    Even n.val →
       ∃ p : Fin (n.val + 1),
         Nat.Prime p.val ∧ Nat.Prime (n.val - p.val)
 
@@ -76,9 +77,10 @@ theorem certifiedThrough_sound {limit n : ℕ}
     (hcert : CertifiedThrough limit)
     (hmin : 4 ≤ n) (hmax : n ≤ limit) (heven : Even n) :
     GoldbachAt n := by
-  have hmem : n ∈ Finset.Icc 4 limit :=
-    Finset.mem_Icc.mpr ⟨hmin, hmax⟩
-  obtain ⟨p, hp, hq⟩ := hcert ⟨n, hmem⟩ heven
+  have hn : n < limit + 1 := by omega
+  obtain ⟨p, hp, hq⟩ := hcert ⟨n, hn⟩ hmin heven
+  have hp_bound : p.val < n + 1 := by simpa using p.isLt
+  have hp_le : p.val ≤ n := by omega
   exact ⟨p.val, n - p.val, hp, hq, by omega⟩
 
 end Testing.Goldbach
