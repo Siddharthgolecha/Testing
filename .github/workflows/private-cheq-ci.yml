@@ -144,12 +144,21 @@ jobs:
             compact-compile) pattern='test_assembled_gate_list.py' ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
+          test_path="Q2/experiments/hamiltonian_adaptive/$pattern"
+          if [[ ! -f "$test_path" ]]; then
+            echo "::error::Pinned CheQ suite test file is missing; refuse zero-test PASS."
+            exit 1
+          fi
           logfile="$(mktemp "$RUNNER_TEMP/cheq-private-tests.XXXXXX")"
           trap 'rm -f "$logfile"' EXIT
           if ! timeout 2400s python -B -m unittest discover \
             -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
             >"$logfile" 2>&1; then
             echo "::error::Private CheQ $SUITE FAIL or TIMEOUT. Private logs intentionally suppressed."
+            exit 1
+          fi
+          if ! grep -Eq '^Ran [1-9][0-9]* tests? in ' "$logfile"; then
+            echo "::error::No nonzero test-count receipt; reject vacuous suite PASS."
             exit 1
           fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
