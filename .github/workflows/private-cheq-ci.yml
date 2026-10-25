@@ -580,6 +580,44 @@ jobs:
           fi
           grep '^CHECKED_Q2_SAFETY_NATIVE_SCALARS_ONLY' "$report" || true
 
+      - name: Report scalar-only Phi progress native resources
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-progress-scalars.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from qiskit import transpile
+          from one_ply_unary_occupation import build_qiskit
+          basis=['x','sx','rz','cx']
+          root=(4,0,1,6)
+          variants=(
+            ('safe_only',dict(safety_filter=True)),
+            ('safe_confinement_scatter',
+             dict(safety_filter=True,phase_mode='confinement',
+                  phase_gamma=3.,mix_beta=.8,mix_slices=6)),
+            ('safe_progress_scatter',
+             dict(safety_filter=True,phase_mode='progress_record',
+                  phase_gamma=1.,mix_beta=.8,mix_slices=6)),
+          )
+          for label,kwargs in variants:
+              raw,params=build_qiskit(*root,**kwargs)
+              native=transpile(raw,basis_gates=basis,optimization_level=0)
+              print('CHECKED_Q2_PROGRESS_SCALARS_ONLY'
+                    +' variant='+label
+                    +' qubits='+str(native.num_qubits)
+                    +' cx='+str(native.count_ops().get('cx',0))
+                    +' depth='+str(native.depth())
+                    +' native_instructions='+str(native.size())
+                    +' geometric_templates='+str(params['geometric_templates']))
+          PY
+          then
+            echo '::error::Private Phi native resource audit failed; diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_PROGRESS_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
