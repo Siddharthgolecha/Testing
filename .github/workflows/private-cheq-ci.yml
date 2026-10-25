@@ -148,7 +148,7 @@ jobs:
           echo 'Private CheQ source syntax: PASS.'
 
       - name: Install pinned Qiskit and Aer for CheQ native gate checks
-        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' }}
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' }}
         run: |
           set -euo pipefail
           logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
