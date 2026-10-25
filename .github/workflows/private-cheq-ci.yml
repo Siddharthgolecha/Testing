@@ -288,8 +288,8 @@ jobs:
           errors=re.findall(r'(?m)^(AssertionError|ImportError|TypeError|ValueError|AttributeError|RuntimeError|ModuleNotFoundError):',text)
           print('Private CheQ failure categories only: ' + ','.join(failures[:6]) +
                 '; errors=' + ','.join(errors[:6]))
-          if 'joint-xy-trotter' in sys.argv[0] or 'test_true_qiskit' in text:
-              n=re.findall(r'test_joint_live_xy_trotter100[.]py", line ([0-9]+)',text)
+          if 'joint-xy-trotter' in sys.argv[0] or 'test_true_qiskit' in text or 'test_typed_black_hopping49.py' in text:
+              n=re.findall(r'test_(?:joint_live_xy_trotter100|typed_black_hopping49)[.]py", line ([0-9]+)',text)
               print('Joint test failing code line numbers only: ' + ','.join(n[-8:]))
           PY
             fi
