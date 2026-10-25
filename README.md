@@ -242,3 +242,51 @@ issue-request workflow is the immediate agent-operated path for commits on
 any private branch and PR. If the agent is acting through a GitHub identity
 other than the owner account, this owner-only gate deliberately rejects its
 requests until that identity is explicitly reviewed and allowlisted.
+
+
+## Ephemeral CheQ KRK / Hamiltonian test workflow (2026-10-25)
+
+[**Private CheQ Q2 validation (ephemeral)**](.github/workflows/private-cheq-ci.yml)
+allows the owner to run a pinned commit of **private** `Siddharthgolecha/CheQ`
+in Testing without publishing research files, source, tracebacks, or artifacts.
+It is **separate** from the `coalescent-research` private workflow.
+It neither replaces nor mutates CheQ's branch or PR.
+
+**One-time CheQ read-only credential (required):**
+
+1. On your computer, generate a dedicated read-only deploy key, e.g.
+   `ssh-keygen -t ed25519 -C "Testing CheQ read-only" -f ./testing-cheq -N ""`.
+2. Add its **public** half (`testing-cheq.pub`) at **CheQ → Settings →
+   Deploy keys** and leave **Allow write access disabled**.
+3. Add its **private** half as a Testing Actions repository secret named
+   **`CHEQ_DEPLOY_KEY`** under **Testing → Settings → Secrets and variables →
+   Actions**. Do not paste or commit either key in a public issue/PR.
+   Do not reuse `COALESCENT_DEPLOY_KEY`: deploy keys are
+   repository-scoped.
+4. Run [Private CheQ Q2 validation](../../actions/workflows/private-cheq-ci.yml)
+   manually with an **exact CheQ 40-digit commit SHA** and one suite
+   (`action-search`, `tagged-hopping`, `counter98`, `geometry`, or
+   `compact-compile`). Alternatively, the verified GitHub account owner
+   can open a new issue titled **`[cheq-ci] run`** with a two-line body:
+
+   ```text
+   source_sha: <40-hex commit>
+   suite: action-search
+   ```
+
+The issue-triggered workflow verifies author user ID **40235858**, an
+exact title/body structure, the hexadecimal source revision and a strict
+allowlist; it is **not** triggered by PRs, forks or issue comments. The
+read-only deploy key is only used for the ephemeral checkout, credentials
+are not persisted, and no private files, test outputs, caches, or artifacts
+are uploaded. This is not a perfect sandbox for malicious private code or
+modified privileged workflow files. Public issue contents and run metadata
+expose the exact source SHA and suite name; choose that intentionally.
+
+**Current acceptance boundary:** creating the workflow or requesting a
+run is not the same as a passing test. If `CHEQ_DEPLOY_KEY` has not been
+installed, the workflow deliberately fails at the preflight secret check.
+Each successful run should be cited by its own GitHub Actions run ID,
+pinned CheQ SHA and selected suite. A single selected suite passing does
+not certify the whole quantum algorithm, native hardware decomposition,
+or a quantum speedup.
