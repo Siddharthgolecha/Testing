@@ -72,12 +72,13 @@ def CertifiedThrough (limit : ℕ) : Prop :=
 theorem certifiedThrough_30 : CertifiedThrough 30 := by
   intro n hmin hmod
   fin_cases n <;>
-    first
-    | omega
-    | exact ⟨⟨2, by omega⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨3, by omega⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨5, by omega⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨7, by omega⟩, by norm_num, by norm_num⟩
+    solve
+    | norm_num at hmin
+    | norm_num at hmod
+    | exact ⟨⟨2, by norm_num⟩, by norm_num, by norm_num⟩
+    | exact ⟨⟨3, by norm_num⟩, by norm_num, by norm_num⟩
+    | exact ⟨⟨5, by norm_num⟩, by norm_num, by norm_num⟩
+    | exact ⟨⟨7, by norm_num⟩, by norm_num, by norm_num⟩
 
 /-- Any finite certificate genuinely supplies a prime pair within its bound. -/
 theorem certifiedThrough_sound {limit n : ℕ}
