@@ -68,17 +68,30 @@ def CertifiedThrough (limit : ℕ) : Prop :=
       ∃ p : Fin (n.val + 1),
         Nat.Prime p.val ∧ Nat.Prime (n.val - p.val)
 
-/-- Finite computational certificate; not an asymptotic or universal proof. -/
+/-- Explicit finite witnesses. Values outside the tested even inputs are immaterial. -/
+private def smallWitness : ℕ → ℕ
+  | 4 => 2
+  | 6 => 3
+  | 8 => 3
+  | 10 => 3
+  | 12 => 5
+  | 14 => 3
+  | 16 => 3
+  | 18 => 5
+  | 20 => 3
+  | 22 => 3
+  | 24 => 5
+  | 26 => 3
+  | 28 => 5
+  | 30 => 7
+  | _ => 0
+
+/-- Finite certificate, proved with concrete witnesses, not an infinite claim. -/
 theorem certifiedThrough_30 : CertifiedThrough 30 := by
   intro n hmin hmod
-  fin_cases n <;>
-    solve
-    | norm_num at hmin
-    | norm_num at hmod
-    | exact ⟨⟨2, by norm_num⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨3, by norm_num⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨5, by norm_num⟩, by norm_num, by norm_num⟩
-    | exact ⟨⟨7, by norm_num⟩, by norm_num, by norm_num⟩
+  refine ⟨⟨smallWitness n.val, ?_⟩, ?_, ?_⟩
+  all_goals
+    fin_cases n <;> norm_num [smallWitness] at *
 
 /-- Any finite certificate genuinely supplies a prime pair within its bound. -/
 theorem certifiedThrough_sound {limit n : ℕ}
