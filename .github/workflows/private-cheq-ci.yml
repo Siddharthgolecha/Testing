@@ -305,7 +305,8 @@ jobs:
           if [[ "$SUITE" == 'joint-xy-trotter' ]]; then
             # Publish ONLY scalar gate/resource counts, never private code,
             # traces, raw test logs or circuit dumps.
-            python -B - <<'PY'
+            metric_log="$(mktemp "$RUNNER_TEMP/cheq-metrics.XXXXXX")"
+            if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$metric_log" 2>&1 <<'PY'
           from qiskit import QuantumCircuit,transpile
           from joint_live_xy_trotter100 import append_physical_kinetic,build_joint_qiskit
           from live_failure_phase100 import resources
@@ -323,6 +324,13 @@ jobs:
                 +' joint_Qiskit_high_level_instructions='+str(full.size())
                 +' peak_mcx_controls='+str(live['max_control_count']))
           PY
+            then
+              echo '::error::Private Q2 scalar metrics computation failed; diagnostics suppressed.'
+              rm -f "$metric_log"
+              exit 1
+            fi
+            grep '^CHECKED_Q2_RESOURCE_METRICS_ONLY' "$metric_log" || true
+            rm -f "$metric_log"
           fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
