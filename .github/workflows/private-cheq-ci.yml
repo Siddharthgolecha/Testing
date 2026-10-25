@@ -590,6 +590,7 @@ jobs:
           if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
           from qiskit import transpile
           from one_ply_unary_occupation import build_qiskit
+          from geometric_progress_field import scalar
           basis=['x','sx','rz','cx']
           root=(4,0,1,6)
           variants=(
@@ -599,6 +600,10 @@ jobs:
                   phase_gamma=3.,mix_beta=.8,mix_slices=6)),
             ('safe_progress_scatter',
              dict(safety_filter=True,phase_mode='progress_record',
+                  phase_gamma=1.,mix_beta=.8,mix_slices=6)),
+            ('safe_entry_threshold_scatter',
+             dict(safety_filter=True,phase_mode='entry_threshold',
+                  entry_mu=scalar(4,0,1,6),threshold_eta=1.,
                   phase_gamma=1.,mix_beta=.8,mix_slices=6)),
           )
           for label,kwargs in variants:
