@@ -669,6 +669,12 @@ jobs:
                             +' adversarial_target_hit_probability='+str(
                                a['worst_case_target_hit_probability'])
                             +' dp_nodes='+str(a['unique_dp_nodes']))
+          witness=__import__('entry_fuel_adversarial_audit').cycle_support_witness(.2)
+          print('CHECKED_Q2_ENTRY_FUEL_SAFE_CYCLE_SCALARS_ONLY'
+                +' first_white_probability='+str(witness['p_first_white_action'])
+                +' second_white_probability='+str(witness['p_second_white_action'])
+                +' two_white_turn_cycle_probability='+str(
+                   witness['two_white_turn_cycle_probability_conditioned_on_named_black_replies']))
           PY
           then
             echo '::error::Private entry-fuel scalar audit failed; diagnostics suppressed.'
