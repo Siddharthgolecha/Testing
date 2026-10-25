@@ -11,7 +11,7 @@ elementary divisor-avoidance argument would still have to establish.
   up to their respective square roots.
 * `goldbachAt_iff_exists_sieve` proves that existence of a survivor is
   equivalent to the original Goldbach assertion for this particular `n`.
-* `certifiedThrough_30` checks finitely many cases by kernel reduction.
+* `verified_even_cases_through_30` checks 14 explicit even inputs.
 No `sorry`, new axioms, or assumed universal witness is used.
 -/
 
@@ -60,50 +60,53 @@ theorem conjecture_iff_sieve_survival :
       ∀ n : ℕ, 4 ≤ n → Even n → ∃ a : ℕ, SurvivesSieve n a := by
   simp only [GoldbachConjecture, goldbachAt_iff_exists_sieve]
 
-/-- A finite proposition with explicitly bounded witnesses and inputs. -/
-def CertifiedThrough (limit : ℕ) : Prop :=
-  ∀ n : Fin (limit + 1),
-    4 ≤ n.val →
-    n.val % 2 = 0 →
-      ∃ p : Fin (n.val + 1),
-        Nat.Prime p.val ∧ Nat.Prime (n.val - p.val)
+/-!
+### Exactly bounded certification
+The following is a finite conjunction, not a claim about all even integers.
+Each witness is checked by Lean's prime-number tactic and kernel.
+-/
 
-/-- Explicit finite witnesses. Values outside the tested even inputs are immaterial. -/
-private def smallWitness : ℕ → ℕ
-  | 4 => 2
-  | 6 => 3
-  | 8 => 3
-  | 10 => 3
-  | 12 => 5
-  | 14 => 3
-  | 16 => 3
-  | 18 => 5
-  | 20 => 3
-  | 22 => 3
-  | 24 => 5
-  | 26 => 3
-  | 28 => 5
-  | 30 => 7
-  | _ => 0
-
-/-- Finite certificate, proved with concrete witnesses, not an infinite claim. -/
-theorem certifiedThrough_30 : CertifiedThrough 30 := by
-  intro n hmin hmod
-  refine ⟨⟨smallWitness n.val, ?_⟩, ?_, ?_⟩
-  all_goals
-    fin_cases n <;> norm_num [smallWitness] at *
-
-/-- Any finite certificate genuinely supplies a prime pair within its bound. -/
-theorem certifiedThrough_sound {limit n : ℕ}
-    (hcert : CertifiedThrough limit)
-    (hmin : 4 ≤ n) (hmax : n ≤ limit) (heven : Even n) :
-    GoldbachAt n := by
-  have hn : n < limit + 1 := by omega
-  rcases heven with ⟨k, hk⟩
-  have hmod : n % 2 = 0 := by omega
-  obtain ⟨p, hp, hq⟩ := hcert ⟨n, hn⟩ hmin hmod
-  have hp_bound : p.val < n + 1 := by simpa using p.isLt
-  have hp_le : p.val ≤ n := by omega
-  exact ⟨p.val, n - p.val, hp, hq, by omega⟩
+theorem verified_even_cases_through_30 :
+    GoldbachAt 4 ∧
+    GoldbachAt 6 ∧
+    GoldbachAt 8 ∧
+    GoldbachAt 10 ∧
+    GoldbachAt 12 ∧
+    GoldbachAt 14 ∧
+    GoldbachAt 16 ∧
+    GoldbachAt 18 ∧
+    GoldbachAt 20 ∧
+    GoldbachAt 22 ∧
+    GoldbachAt 24 ∧
+    GoldbachAt 26 ∧
+    GoldbachAt 28 ∧
+    GoldbachAt 30 := by
+  constructor
+  · exact ⟨2, 2, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 3, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 5, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 7, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨5, 7, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 11, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 13, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨5, 13, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 17, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 19, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨5, 19, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨3, 23, by norm_num, by norm_num, by norm_num⟩
+  constructor
+  · exact ⟨5, 23, by norm_num, by norm_num, by norm_num⟩
+  exact ⟨7, 23, by norm_num, by norm_num, by norm_num⟩
 
 end Testing.Goldbach
