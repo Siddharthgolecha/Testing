@@ -32,6 +32,7 @@ on:
           - typed-geometry
           - white-local-actions
           - onehot-white-actions
+          - typed-white-hopping
           - lean-causal
           - lean-frustration
           - lean-boundary
@@ -83,7 +84,7 @@ jobs:
                    'live-qiskit-build', 'physical-xy-echo',
                    'joint-xy-trotter', 'local-projector',
                    'typed-geometry', 'white-local-actions',
-                   'onehot-white-actions',
+                   'onehot-white-actions', 'typed-white-hopping',
                    'lean-causal', 'lean-frustration', 'lean-boundary'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
@@ -161,7 +162,7 @@ jobs:
           echo 'Private CheQ source syntax: PASS.'
 
       - name: Install pinned Qiskit and Aer for CheQ native gate checks
-        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' || steps.request.outputs.suite == 'live-spectrum' || steps.request.outputs.suite == 'live-qiskit-build' || steps.request.outputs.suite == 'physical-xy-echo' || steps.request.outputs.suite == 'joint-xy-trotter' || steps.request.outputs.suite == 'local-projector' || steps.request.outputs.suite == 'typed-geometry' || steps.request.outputs.suite == 'white-local-actions' || steps.request.outputs.suite == 'onehot-white-actions' }}
+        if: ${{ steps.request.outputs.suite == 'qiskit-native' || steps.request.outputs.suite == 'qiskit-full-build' || steps.request.outputs.suite == 'spectral-causal' || steps.request.outputs.suite == 'live-frustration' || steps.request.outputs.suite == 'live-spectrum' || steps.request.outputs.suite == 'live-qiskit-build' || steps.request.outputs.suite == 'physical-xy-echo' || steps.request.outputs.suite == 'joint-xy-trotter' || steps.request.outputs.suite == 'local-projector' || steps.request.outputs.suite == 'typed-geometry' || steps.request.outputs.suite == 'white-local-actions' || steps.request.outputs.suite == 'onehot-white-actions' || steps.request.outputs.suite == 'typed-white-hopping' }}
         run: |
           set -euo pipefail
           logfile="$(mktemp "$RUNNER_TEMP/cheq-pip.XXXXXX")"
@@ -260,6 +261,7 @@ jobs:
             typed-geometry) pattern='test_typed_local_geometry_projectors.py' ;;
             white-local-actions) pattern='test_local_white_action_hamiltonian100.py' ;;
             onehot-white-actions) pattern='test_onehot_local_white_actions100.py' ;;
+            typed-white-hopping) pattern='test_typed_white_hopping49.py' ;;
             lean-causal) echo 'Lean suite should skip Python tests'; exit 1 ;;
             *) echo '::error::Invalid CheQ suite'; exit 1 ;;
           esac
@@ -273,7 +275,7 @@ jobs:
           if ! timeout 2400s python -B -m unittest discover \
             -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
             >"$logfile" 2>&1; then
-            if [[ "$SUITE" == 'live-frustration' || "$SUITE" == 'joint-xy-trotter' || "$SUITE" == 'typed-geometry' || "$SUITE" == 'white-local-actions' || "$SUITE" == 'onehot-white-actions' ]]; then
+            if [[ "$SUITE" == 'live-frustration' || "$SUITE" == 'joint-xy-trotter' || "$SUITE" == 'typed-geometry' || "$SUITE" == 'white-local-actions' || "$SUITE" == 'onehot-white-actions' || "$SUITE" == 'typed-white-hopping' ]]; then
               python3 - "$logfile" <<'PY'
           import pathlib,re,sys
           text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
