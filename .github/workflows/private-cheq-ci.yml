@@ -249,6 +249,16 @@ jobs:
           if ! timeout 2400s python -B -m unittest discover \
             -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
             >"$logfile" 2>&1; then
+            if [[ "$SUITE" == 'live-frustration' ]]; then
+              python3 - "$logfile" <<'PY'
+          import pathlib,re,sys
+          text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
+          failures=re.findall(r'(?m)^(?:FAIL|ERROR): (test_[a-zA-Z0-9_]+) ',text)
+          errors=re.findall(r'(?m)^(AssertionError|ImportError|TypeError|ValueError|AttributeError|RuntimeError|ModuleNotFoundError):',text)
+          print('Private CheQ failure categories only: ' + ','.join(failures[:6]) +
+                '; errors=' + ','.join(errors[:6]))
+          PY
+            fi
             if [[ "$SUITE" == 'spectral-causal' ]]; then
               python3 - "$logfile" "$GITHUB_WORKSPACE/public-tooling/diagnostics/cheq-spectral-debug-oct25.pub" <<'PY'
           import base64,pathlib,re,subprocess,sys,tempfile
