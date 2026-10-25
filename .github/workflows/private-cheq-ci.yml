@@ -1,0 +1,161 @@
+name: Private CheQ Q2 validation (ephemeral)
+
+# Keep private CheQ sources, tests, logs, and artifacts off public Testing.
+# Authorize only manual owner dispatch and exact-shape owner-created issues.
+# Never checkout private code on pull_request, forks, or untrusted comments.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: 'Pinned 40-hex CheQ commit (public run metadata)'
+        required: true
+        type: string
+      suite:
+        description: 'Allowlisted KRK research validation suite'
+        required: true
+        type: choice
+        options:
+          - action-search
+          - tagged-hopping
+          - counter98
+          - geometry
+          - compact-compile
+        default: action-search
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cheq-private-validation
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.actor == 'Siddharthgolecha')
+      || (github.event_name == 'issues'
+          && github.event.issue.user.id == 40235858
+          && github.event.issue.title == '[cheq-ci] run')
+    name: Read-only CheQ checkout / private-safe pass-fail
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      PIP_NO_CACHE_DIR: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Validate trusted exact SHA and suite
+        id: request
+        env:
+          EVENT_NAME: \${{ github.event_name }}
+          ISSUE_BODY: \${{ github.event.issue.body }}
+          DIRECT_SHA: \${{ inputs.source_sha }}
+          DIRECT_SUITE: \${{ inputs.suite }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+          allow = {'action-search', 'tagged-hopping', 'counter98',
+                   'geometry', 'compact-compile'}
+          if os.environ['EVENT_NAME'] == 'issues':
+              match = re.fullmatch(
+                  r'source_sha: ([0-9a-f]{40})\nsuite: ([a-z0-9-]+)',
+                  os.environ.get('ISSUE_BODY', '').strip())
+              if match is None:
+                  sys.exit('Invalid owner CheQ validation request shape.')
+              sha, suite = match.groups()
+          else:
+              sha = os.environ.get('DIRECT_SHA', '')
+              suite = os.environ.get('DIRECT_SUITE', '')
+          if not re.fullmatch(r'[0-9a-f]{40}', sha) or suite not in allow:
+              sys.exit('Invalid pinned source SHA or unrecognized suite.')
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as fp:
+              fp.write(f'source_sha={sha}\nsuite={suite}\n')
+          print(f'Authorized owner-only CheQ suite: {suite}; exact source SHA validated.')
+          PY
+
+      - name: Ensure dedicated read-only CheQ deploy key exists
+        env:
+          CHEQ_KEY: \${{ secrets.CHEQ_DEPLOY_KEY }}
+        run: |
+          if [[ -z "$CHEQ_KEY" ]]; then
+            echo '::error::CHEQ_DEPLOY_KEY is missing in Testing Actions secrets. Install a new CheQ read-only deploy key; do not reuse COALESCENT_DEPLOY_KEY.'
+            exit 1
+          fi
+
+      - name: Set up Python without source caching
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Checkout exact private CheQ commit to ephemeral runner
+        uses: actions/checkout@v4
+        with:
+          repository: Siddharthgolecha/CheQ
+          ref: \${{ steps.request.outputs.source_sha }}
+          ssh-key: \${{ secrets.CHEQ_DEPLOY_KEY }}
+          ssh-strict: true
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+          path: private-src
+
+      - name: Check pinned checkout integrity
+        env:
+          SOURCE_SHA: \${{ steps.request.outputs.source_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$(git -C private-src rev-parse HEAD)" == "$SOURCE_SHA" ]] || {
+            echo '::error::Fetched CheQ revision does not equal requested SHA.'
+            exit 1
+          }
+          echo 'Exact requested CheQ revision checked out into ephemeral runner.'
+
+      - name: Python source syntax verification (private output suppressed)
+        run: |
+          set -euo pipefail
+          logfile="$(mktemp "$RUNNER_TEMP/cheq-syntax.XXXXXX")"
+          trap 'rm -f "$logfile"' EXIT
+          if ! timeout 180s python -B -m compileall -q \
+            private-src/Q2/experiments/hamiltonian_adaptive >"$logfile" 2>&1; then
+            echo '::error::Private CheQ syntax compilation FAIL; details suppressed.'
+            exit 1
+          fi
+          echo 'Private CheQ source syntax: PASS.'
+
+      - name: Execute exact CheQ research suite (private output suppressed)
+        env:
+          SUITE: \${{ steps.request.outputs.suite }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          case "$SUITE" in
+            action-search) pattern='test_coherent_action_search100.py' ;;
+            tagged-hopping) pattern='test_tag_corrected_xy.py' ;;
+            counter98) pattern='test_compact_reply_counter98.py' ;;
+            geometry) pattern='test_live_geometry_oracle.py' ;;
+            compact-compile) pattern='test_assembled_gate_list.py' ;;
+            *) echo '::error::Invalid CheQ suite'; exit 1 ;;
+          esac
+          logfile="$(mktemp "$RUNNER_TEMP/cheq-private-tests.XXXXXX")"
+          trap 'rm -f "$logfile"' EXIT
+          if ! timeout 2400s python -B -m unittest discover \
+            -s Q2/experiments/hamiltonian_adaptive -p "$pattern" -v \
+            >"$logfile" 2>&1; then
+            echo "::error::Private CheQ $SUITE FAIL or TIMEOUT. Private logs intentionally suppressed."
+            exit 1
+          fi
+          echo "Private CheQ $SUITE: PASS. Source/test output not published."
+
+      - name: Cleanup ephemeral private checkout
+        if: always()
+        run: |
+          rm -rf -- private-src
+          echo 'Ephemeral CheQ source cleared; no private artifacts uploaded.'
