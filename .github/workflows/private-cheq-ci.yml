@@ -487,6 +487,37 @@ jobs:
           fi
           grep '^CHECKED_Q2_ONE_PLY_NATIVE_SCALARS_ONLY' "$metrics" || true
 
+      - name: Report scalar-only unary White one-ply optimization
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          report="$(mktemp "$RUNNER_TEMP/cheq-unary-metrics.XXXXXX")"
+          trap 'rm -f "$report"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$report" 2>&1 <<'PY'
+          from exact_one_ply_occupation import build_qiskit as previous
+          from one_ply_unary_occupation import build_qiskit as unary
+          from qiskit import transpile
+          basis=['x','sx','rz','cx']
+          old,_=previous(4,0,1,6)
+          new,receipt=unary(4,0,1,6)
+          old_native=transpile(old,basis_gates=basis,optimization_level=0)
+          new_native=transpile(new,basis_gates=basis,optimization_level=0)
+          print('CHECKED_Q2_UNARY_ONE_PLY_RESOURCE_SCALARS_ONLY'
+                +' binary_qubits='+str(old.num_qubits)
+                +' binary_cx='+str(old_native.count_ops().get('cx',0))
+                +' unary_qubits='+str(new.num_qubits)
+                +' unary_cx='+str(new_native.count_ops().get('cx',0))
+                +' unary_native_depth='+str(new_native.depth())
+                +' unary_native_instructions='+str(new_native.size())
+                +' herald_probability='+str(receipt['success_probability']))
+          PY
+          then
+            echo '::error::Private White unary resource audit failed; details suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_UNARY_ONE_PLY_RESOURCE_SCALARS_ONLY' "$report" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
