@@ -302,6 +302,28 @@ jobs:
             echo "::error::No nonzero test-count receipt; reject vacuous suite PASS."
             exit 1
           fi
+          if [[ "$SUITE" == 'joint-xy-trotter' ]]; then
+            # Publish ONLY scalar gate/resource counts, never private code,
+            # traces, raw test logs or circuit dumps.
+            python -B - <<'PY'
+          from qiskit import QuantumCircuit,transpile
+          from joint_live_xy_trotter100 import append_physical_kinetic,build_joint_qiskit
+          from live_failure_phase100 import resources
+          qc=QuantumCircuit(19)
+          append_physical_kinetic(qc,.24)
+          native=transpile(qc,basis_gates=['x','sx','rz','cx'],optimization_level=0)
+          full,info=build_joint_qiskit(.24,1)
+          live=resources()
+          print('CHECKED_Q2_RESOURCE_METRICS_ONLY'
+                ' logical_qubits=100'
+                ' physical_kinetic_native_CX='+str(native.count_ops().get('cx',0))
+                +' physical_kinetic_native_depth='+str(native.depth())
+                +' live_failure_logical_blocks='+str(live['abstract_blocks'])
+                +' physical_adapter_blocks='+str(info['per_step_decoder_logical_blocks'])
+                +' joint_Qiskit_high_level_instructions='+str(full.size())
+                +' peak_mcx_controls='+str(live['max_control_count']))
+          PY
+          fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
       - name: Cleanup ephemeral private checkout
