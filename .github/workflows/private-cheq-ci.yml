@@ -518,6 +518,33 @@ jobs:
           fi
           grep '^CHECKED_Q2_UNARY_ONE_PLY_RESOURCE_SCALARS_ONLY' "$report" || true
 
+      - name: Report scalar-only geometry XY-scattering native resources
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          file="$(mktemp "$RUNNER_TEMP/cheq-scatter-metrics.XXXXXX")"
+          trap 'rm -f "$file"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$file" 2>&1 <<'PY'
+          from one_ply_unary_occupation import build_qiskit
+          from qiskit import transpile
+          raw,params=build_qiskit(4,0,1,6,phase_gamma=3.,
+                                  mix_beta=.8,mix_slices=6)
+          qc=transpile(raw,basis_gates=['x','sx','rz','cx'],
+                       optimization_level=0)
+          print('CHECKED_Q2_SCATTER_NATIVE_SCALARS_ONLY'
+                +' qubits='+str(qc.num_qubits)
+                +' cx='+str(qc.count_ops().get('cx',0))
+                +' depth='+str(qc.depth())
+                +' native_instructions='+str(qc.size())
+                +' trotter_slices='+str(params['mix_slices']))
+          PY
+          then
+            echo '::error::Private scattering resource audit failed; output suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_SCATTER_NATIVE_SCALARS_ONLY' "$file" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
