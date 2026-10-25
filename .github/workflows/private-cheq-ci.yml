@@ -287,7 +287,7 @@ jobs:
           import pathlib,re,sys
           text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
           failures=re.findall(r'(?m)^(?:FAIL|ERROR): (test_[a-zA-Z0-9_]+) ',text)
-          errors=re.findall(r'(?m)^([A-Za-z_][A-Za-z_0-9]*(?:Error|Exception)):',text)
+          errors=re.findall(r'(?m)^(?:[A-Za-z_][A-Za-z_0-9]*[.])*([A-Za-z_][A-Za-z_0-9]*(?:Error|Exception)):',text)
           print('Private CheQ failure categories only: ' + ','.join(failures[:6]) +
                 '; errors=' + ','.join(errors[:6]))
           if 'test_real_qiskit_mps_one_ply_support' in text:
