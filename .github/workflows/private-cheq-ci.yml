@@ -287,9 +287,12 @@ jobs:
           import pathlib,re,sys
           text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
           failures=re.findall(r'(?m)^(?:FAIL|ERROR): (test_[a-zA-Z0-9_]+) ',text)
-          errors=re.findall(r'(?m)^(AssertionError|ImportError|TypeError|ValueError|AttributeError|RuntimeError|ModuleNotFoundError):',text)
+          errors=re.findall(r'(?m)^([A-Za-z_][A-Za-z_0-9]*(?:Error|Exception)):',text)
           print('Private CheQ failure categories only: ' + ','.join(failures[:6]) +
                 '; errors=' + ','.join(errors[:6]))
+          if 'test_real_qiskit_mps_one_ply_support' in text:
+              sites=re.findall(r'(?m)^[ ]*File \"[^\"]*/(exact_one_ply_occupation|test_typed_local_geometry_projectors)[.]py\", line ([0-9]+)',text)
+              print('One-ply private test code line numbers only: ' + ','.join(f'{name}:{number}' for name,number in sites[-6:]))
           if 'joint-xy-trotter' in sys.argv[0] or 'test_true_qiskit' in text or 'test_typed_black_hopping49.py' in text:
               n=re.findall(r'test_(?:joint_live_xy_trotter100|typed_black_hopping49)[.]py", line ([0-9]+)',text)
               print('Joint test failing code line numbers only: ' + ','.join(n[-8:]))
