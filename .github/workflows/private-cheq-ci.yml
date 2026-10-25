@@ -414,6 +414,44 @@ jobs:
             grep '^CHECKED_Q2_ONEHOT_RESOURCE_SCALARS_ONLY' "$metrics" || true
             rm -f "$metrics"
           fi
+          if [[ "$SUITE" == 'physical-black-hopping' ]]; then
+            scalars="$(mktemp "$RUNNER_TEMP/cheq-physical-hopping.XXXXXX")"
+            if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$scalars" 2>&1 <<'PY'
+          from typed_white_hopping49 import resources as white_r
+          from typed_black_hopping49 import resources as black_r
+          from physical_white_hopping100 import build_qiskit as white_build
+          from physical_black_hopping100 import build_qiskit as black_build
+          from qiskit import transpile
+          from typed_white_hopping49 import isolated_three_body_qiskit
+          from typed_black_hopping49 import black_three_body_qiskit
+          w=white_r();b=black_r()
+          wc,wi=white_build(.023)
+          bc,bi=black_build(.023)
+          wn=transpile(isolated_three_body_qiskit(.023),
+                       basis_gates=['x','sx','rz','cx'],optimization_level=0)
+          bn=transpile(black_three_body_qiskit(.023),
+                       basis_gates=['x','sx','rz','cx'],optimization_level=0)
+          print('CHECKED_Q2_PHYSICAL_HOPPING_SCALARS_ONLY'
+                +' width='+str(wc.num_qubits)
+                +' white_geom_terms='+str(w['uniform_geometric_hopping_terms'])
+                +' white_high_level_blocks='+str(wi['high_level_instructions'])
+                +' white_max_guard_controls='+str(w['maximum_empty_occupancy_guards'])
+                +' black_geom_edges='+str(b['geometric_king_edges'])
+                +' black_guarded_terms='+str(b['geometry_guarded_hopping_terms'])
+                +' black_capture_guarded_terms='+str(b['capture_sink_guard_terms'])
+                +' black_max_controls='+str(b['max_diagonal_controls'])
+                +' black_high_level_blocks='+str(bi['high_level_qiskit_instruction_count'])
+                +' isolated_white_3body_native_cx='+str(wn.count_ops().get('cx',0))
+                +' isolated_black_3body_native_cx='+str(bn.count_ops().get('cx',0)))
+          PY
+            then
+              echo '::error::Private physical movement resource audit failed; raw diagnostics suppressed.'
+              rm -f "$scalars"
+              exit 1
+            fi
+            grep '^CHECKED_Q2_PHYSICAL_HOPPING_SCALARS_ONLY' "$scalars" || true
+            rm -f "$scalars"
+          fi
           echo "Private CheQ $SUITE: PASS. Source/test output not published."
 
       - name: Cleanup ephemeral private checkout
