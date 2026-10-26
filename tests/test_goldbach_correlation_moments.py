@@ -219,6 +219,26 @@ class TestGoldbachCorrelationMoments(unittest.TestCase):
         # moment bound is too weak to certify N=200 by worst gaps.
         self.assertGreater(moment_gap_bound(30030, 200, 500)[0], 200 - 3)
 
+    def test_short_range_correlations_do_not_determine_longest_gap(self):
+        """Two targets agree on R(d), 0<=d<=11, but have distinct gaps."""
+        modulus = 2310
+        n1, n2 = 38, 82
+        primes = prime_divisors_squarefree(modulus)
+        self.assertEqual(crt_survivor_count(primes, n1), 135)
+        self.assertEqual(crt_survivor_count(primes, n2), 135)
+        for d in range(12):
+            self.assertEqual(
+                crt_pair_correlation(primes, n1, d),
+                crt_pair_correlation(primes, n2, d),
+                f"first differing separation should be 12, not {d}",
+            )
+        self.assertNotEqual(
+            crt_pair_correlation(primes, n1, 12),
+            crt_pair_correlation(primes, n2, 12),
+        )
+        self.assertEqual(max_cyclic_gap(candidate_mask(modulus, n1)), 42)
+        self.assertEqual(max_cyclic_gap(candidate_mask(modulus, n2)), 66)
+
     def test_nonempty_window_cauchy_schwarz_certificate(self):
         for modulus, target, length in (
             (210, 212, 30), (210, 226, 30),
