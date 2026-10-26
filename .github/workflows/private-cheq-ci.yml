@@ -831,6 +831,36 @@ jobs:
           fi
           grep '^CHECKED_Q2_ROOK_FENCE_SCALARS_ONLY' "$output" || true
 
+      - name: Report partial Lyapunov two-species clear fence scalars
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-fence-lyapunov.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from clear_fence_lyapunov_audit import verify_board
+          for n in (4,5,6):
+              report=verify_board(n)
+              c=report['counts']
+              print('CHECKED_Q2_FENCE_LYAPUNOV_SCALARS_ONLY'
+                    +' board='+str(n)
+                    +' White_roots='+str(c['legal_white_roots'])
+                    +' clear_fence_roots='+str(c.get('clear_fence_roots',0))
+                    +' deadlocks='+str(c.get('deadlock_roots',0))
+                    +' king_moves='+str(c.get('king_actions',0))
+                    +' rook_moves='+str(c.get('rook_actions',0))
+                    +' all_human_replies_checked='+str(
+                       c.get('all_Black_replies_checked',0))
+                    +' mates='+str(c.get('mate_actions',0))
+                    +' first_deadlock='+str(report['first_deadlocks'][:1]).replace(' ',''))
+          PY
+          then
+            echo '::error::Private fence Lyapunov audit failed; output suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_FENCE_LYAPUNOV_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
