@@ -957,6 +957,37 @@ jobs:
           fi
           grep '^CHECKED_Q2_PHASE_HANDOFF_SCALARS_ONLY' "$output" || true
 
+      - name: Report directional rook-fence robust rank enlargement
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-directional-fence.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from directional_fence_lyapunov_audit import verify_board
+          for n in (4,5,6):
+              r=verify_board(n)
+              c=r['counts']
+              print('CHECKED_Q2_DIRECTIONAL_FENCE_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' roots='+str(c['white_roots'])
+                    +' admissible_sector='+str(c['directional_fence_roots'])
+                    +' deadlocks='+str(c['deadlock_roots'])
+                    +' accepted_actions='+str(c['admitted_white_moves'])
+                    +' king_moves='+str(c['king_moves'])
+                    +' rook_moves='+str(c['rook_moves'])
+                    +' human_replies_checked='+str(c['legal_Black_replies_checked'])
+                    +' rescued_original_deadlocks='+str(
+                        c['rescued_original_clear_fence_deadlocks'])
+                    +' first_rescue='+str(r['first_rescued_deadlock']).replace(' ',''))
+          PY
+          then
+            echo '::error::Directional fence Lyapunov audit failed; private detail suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_DIRECTIONAL_FENCE_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
