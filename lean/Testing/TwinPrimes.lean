@@ -40,6 +40,7 @@ theorem twin_prime_normal_form (p : ℕ)
     have hdvd : 3 ∣ p + 2 := Nat.dvd_of_mod_eq_zero hz
     have heq : p + 2 = 3 := (hq.dvd_iff_eq (by decide)).mp hdvd
     omega
+  have hpmod3 : p % 3 = 2 := by omega
   have hmod : p % 6 = 5 := by omega
   refine ⟨(p + 1) / 6, ?_, ?_, ?_⟩ <;> omega
 
