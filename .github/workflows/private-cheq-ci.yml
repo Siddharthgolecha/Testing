@@ -801,6 +801,36 @@ jobs:
           fi
           grep '^CHECKED_Q2_BOUNDED_MANEUVER' "$output" || true
 
+      - name: Report certified rook fence contraction counts
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-rook-fence.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from rook_fence_contraction_audit import verify_board
+          for n in (4,5,6):
+              result=verify_board(n)
+              c=result['counts']
+              print('CHECKED_Q2_ROOK_FENCE_SCALARS_ONLY'
+                    +' board='+str(n)
+                    +' legal_roots='+str(c['legal_white_roots'])
+                    +' roots_with_certified_contraction='+str(
+                       c.get('roots_with_rook_fence_contraction',0))
+                    +' certified_rook_moves='+str(c.get('certified_rook_moves',0))
+                    +' human_replies_checked='+str(
+                       c.get('checked_human_black_responses',0))
+                    +' checkmates='+str(c.get('terminal_mates',0))
+                    +' first_example='+str(
+                       result['first_certificates'][:1]).replace(' ',''))
+          PY
+          then
+            echo '::error::Private rook fence proof-obligation audit failed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_ROOK_FENCE_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
