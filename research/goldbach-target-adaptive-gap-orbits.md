@@ -202,3 +202,36 @@ https://doi.org/10.1016/S0378-4371(99)00171-5.
 It already relates prime-pair questions to autocorrelations and
 Fourier/spectral methods. Our finite identity is not asserted to be
 an original version of that approach.
+
+### Target-centered Fourier cancellation: a measurable missing ingredient
+
+For every even target N, f(N-a)=f(a). Therefore, with
+Fhat(h)=sum_a f(a)*exp(-2*pi*i*h*a/M), the shifted coefficient
+exp(pi*i*h*N/M)*Fhat(h) is **real**.
+
+The Goldbach-relevant search interval [2,N-2] has L=N-3 and midpoint
+N/2, giving this exact signed real identity:
+
+```text
+C_M,N([2,N-2]) =
+  L*A/M + (1/M)*sum_{h=1}^{M-1}
+    Re(exp(pi*i*h*N/M)*Fhat(h))
+    *sin(pi*h*L/M)/sin(pi*h/M).
+```
+
+The test file `tests/test_goldbach_centered_spectrum.py` reconstructs
+the exact finite interval counts with NumPy's FFT and compares the
+signed term with the naive sum of term magnitudes.
+
+| N | M (all primes <=sqrt(N)) | actual surviving a in [2,N-2] | mean L*A/M | exact signed correction | Fourier L1 bound on magnitude |
+|---:|---:|---:|---:|---:|---:|
+| 100 | 210 | 10 | 9.238095 | +0.761905 | 5.290920 |
+| 200 | 30030 | 12 | 12.989011 | -0.989011 | 28.298178 |
+
+For N=200 the naive absolute-value estimate is **larger than the mean**
+and cannot certify positivity, even though the signed correction is
+less than 1 in magnitude. This is a quantitative illustration of
+the cancellation that a successful analytic estimate must retain.
+The exact Fourier identity is not a universal prime-pair theorem; if
+one has to evaluate all terms to get the count, the original problem
+has merely been repackaged.
