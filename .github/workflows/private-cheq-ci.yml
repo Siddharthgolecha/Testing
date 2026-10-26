@@ -718,6 +718,46 @@ jobs:
           fi
           grep '^CHECKED_Q2_RECENT_HISTORY_SCALARS_ONLY' "$output" || true
 
+      - name: Report frozen phase progress falsification scalars
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-frozen-phase.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from phase_progress_falsification import audit_board,find_cycle_krk4
+          for n in (4,5,6):
+              for variant in ('strict','weak'):
+                  report=audit_board(n,variant)
+                  c=report['counts']
+                  print('CHECKED_Q2_PHASE_PROJECTOR_SCALARS_ONLY'
+                      +' board='+str(n)
+                      +' variant='+variant
+                      +' roots='+str(c['roots'])
+                      +' empty='+str(c['empty_roots'])
+                      +' supported_edges='+str(c['chosen_edges'])
+                      +' setup_roots='+str(c['phase_setup'])
+                      +' confinement_roots='+str(c['phase_confinement'])
+                      +' approach_roots='+str(c['phase_approach'])
+                      +' terminal_roots='+str(c['phase_terminal'])
+                      +' optimal_nonempty_macro='+str(c['optimal_root_fraction_macro'])
+                      +' drawing_edges='+str(c['drawing_edges'])
+                      +' first_empty_example='+str(report['empty_root_examples'][:1]).replace(' ',''))
+          for variant in ('strict','weak'):
+              result=find_cycle_krk4(variant)
+              print('CHECKED_Q2_PHASE_CYCLE_SCALARS_ONLY'
+                    +' variant='+variant
+                    +' cycle_found='+str(result['cycle_found'])
+                    +' rounds='+str(result.get('cycle_rounds',0))
+                    +' first_white_root='+str(result.get('white_turn_states',[(0,0,0)])[0]))
+          PY
+          then
+            echo '::error::Frozen phase projector verification failed; private traceback suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_PHASE_' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
