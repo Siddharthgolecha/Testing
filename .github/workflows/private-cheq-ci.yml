@@ -758,6 +758,49 @@ jobs:
           fi
           grep '^CHECKED_Q2_PHASE_' "$output" || true
 
+      - name: Report bounded geometric maneuver falsification scalars
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-bounded-maneuver.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from bounded_geometry_maneuver_audit import root_support_census,evaluate_entry
+          for n in (4,5,6):
+              s=root_support_census(n)
+              c=s['counts']
+              print('CHECKED_Q2_BOUNDED_MANEUVER_CENSUS'
+                    +' board='+str(n)
+                    +' roots='+str(c['roots'])
+                    +' safe_actions='+str(c['candidate_actions'])
+                    +' supported='+str(c['corridor_actions'])
+                    +' empty='+str(c.get('empty_corridor_roots',0))
+                    +' filtered_roots='+str(c.get('roots_restricting_safe_support',0))
+                    +' immediate_drawing_moves='+str(c.get('accepted_draws',0))
+                    +' first_empty='+str(s['first_empty'][:1]).replace(' ',''))
+          for root in ((4,0,1,6),(4,4,1,7),(4,0,6,13),
+                       (5,0,6,12)):
+              for fuel in (1,3,5):
+                  for filtered in (False,True):
+                      p=evaluate_entry(*root,fuel=fuel,corridor=filtered)
+                      print('CHECKED_Q2_BOUNDED_MANEUVER_TARGET'
+                            +' root='+','.join(map(str,root))
+                            +' horizon='+str(fuel)
+                            +' filter='+str(filtered)
+                            +' must='+str(p['every_supported_action_robust'])
+                            +' exists_classically='+str(
+                                   p['some_classical_contingent_strategy_exists'])
+                            +' worst_black_prob='+str(
+                                   p['worst_Black_probability_uniform_actions'])
+                            +' empty_nodes='+str(p['empty_augmented_states']))
+          PY
+          then
+            echo '::error::Bounded geometric maneuver audit failed; private trace suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_BOUNDED_MANEUVER' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
