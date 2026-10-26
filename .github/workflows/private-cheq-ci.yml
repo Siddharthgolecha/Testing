@@ -1053,6 +1053,34 @@ jobs:
           fi
           grep '^CHECKED_Q2_\(FENCE_NUCLEATION\|NUCLEATING_HANDOFF\)_SCALARS_ONLY' "$output" || true
 
+      - name: Report geometry-only clear-fence boundary candidates
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-fence-exits.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from clear_fence_exit_geometry_census import census
+          for n in (4,5,6):
+              c=census(n)['counts']
+              print('CHECKED_Q2_GEOMETRIC_EXIT_SCALARS'
+                    +' board='+str(n)
+                    +' deadlocks='+str(c['deadlocks'])
+                    +' with_exit='+str(c['with_boundary_exit'])
+                    +' without_exit='+str(c['without_boundary_exit'])
+                    +' exit_actions='+str(c.get('boundary_exits',0))
+                    +' checking_exits='+str(c.get('kind_check',0))
+                    +' win_preserving='+str(c.get('offline_win_preserving_exits',0))
+                    +' drawing_exits='+str(c.get('offline_drawing_exits',0))
+                    +' immediate_mates='+str(c.get('immediate_mates',0)))
+          PY
+          then
+            echo '::error::Geometry exit census failed; private diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_GEOMETRIC_EXIT_SCALARS' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
