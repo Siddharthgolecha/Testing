@@ -926,6 +926,37 @@ jobs:
           fi
           grep '^CHECKED_Q2_TWO_TURN_REPAIR_SCALARS_ONLY' "$output" || true
 
+      - name: Report composed geometry progress support-graph falsification
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-phase-handoff.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from geometric_phase_handoff_audit import exhaustive
+          for n in (4,5,6):
+              r=exhaustive(n)
+              c=r['counts']
+              print('CHECKED_Q2_PHASE_HANDOFF_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' roots='+str(c['roots'])
+                    +' unsupported_roots='+str(c['roots_empty'])
+                    +' fence_roots='+str(c['roots_fence'])
+                    +' pulse_roots='+str(c['roots_edgeward_check'])
+                    +' supported_actions='+str(c['supported_actions'])
+                    +' any_cycle='+str(r['nonterminal_cycle_found'])
+                    +' max_supported_nonterminal_length='+str(
+                        r.get('max_nonterminal_rounds_until_deadlock_or_mate'))
+                    +' complete_strategy='+str(r['complete_winning_controller'])
+                    +' first_empty='+str(r['first_empty'][:1]).replace(' ',''))
+          PY
+          then
+            echo '::error::Composed geometric progress support-graph audit failed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_PHASE_HANDOFF_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
