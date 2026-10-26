@@ -162,6 +162,39 @@ class TestGoldbachCorrelationMoments(unittest.TestCase):
                     self.assertAlmostEqual(direct.real, derived.real, places=8)
                     self.assertAlmostEqual(direct.imag, derived.imag, places=8)
 
+    def test_absolute_fourier_certificate_is_weaker(self):
+        """L1 over Fourier modes loses more phase cancellation than moments.
+
+        If the h!=0 coefficient bound is smaller than the mean,
+        *every* length-L cyclic window must be nonempty.
+        """
+        for modulus, target, predicted_first in (
+            (210, 212, 72),
+            (210, 226, 60),
+        ):
+            # Exact CRT-local Fourier coefficients; not an FFT approximation.
+            factors = prime_divisors_squarefree(modulus)
+            a = crt_survivor_count(factors, target)
+            coeffs = [
+                abs(local_fourier_coefficient(modulus, target, h))
+                for h in range(1, modulus)
+            ]
+            first_certified = None
+            for length in range(1, modulus + 1):
+                error_bound = sum(
+                    amp * abs(math.sin(math.pi * h * length / modulus)
+                              / math.sin(math.pi * h / modulus))
+                    for h, amp in enumerate(coeffs, start=1)
+                ) / modulus
+                mean = length * a / modulus
+                if mean > error_bound + 1e-8:
+                    first_certified = length
+                    break
+            self.assertEqual(first_certified, predicted_first)
+            self.assertLess(
+                moment_gap_bound(modulus, target, 200)[0], first_certified
+            )
+
     def test_max_gap_certificates_and_weakness(self):
         for modulus, target, max_length, expected_bound, expected_L, actual in (
             (210, 212, 200, 49, 30, 30),
