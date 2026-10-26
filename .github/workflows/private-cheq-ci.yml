@@ -39,6 +39,7 @@ on:
           - lean-causal
           - lean-frustration
           - lean-memoryless
+          - lean-extinction
           - lean-boundary
         default: action-search
   issues:
@@ -90,7 +91,7 @@ jobs:
                    'typed-geometry', 'white-local-actions',
                    'onehot-white-actions', 'typed-white-hopping', 'physical-white-hopping',
                    'typed-black-hopping', 'physical-black-hopping',
-                   'lean-causal', 'lean-frustration', 'lean-boundary', 'lean-memoryless'}
+                   'lean-causal', 'lean-frustration', 'lean-boundary', 'lean-memoryless', 'lean-extinction'}
           if os.environ['EVENT_NAME'] == 'issues':
               match = re.fullmatch(
                   r'source_sha: ([0-9a-f]{40})\nsuite: ([a-z0-9-]+)',
@@ -180,7 +181,7 @@ jobs:
           echo 'Qiskit 2.2.3 and Aer 0.17.2 installed.'
 
       - name: Configure trusted Lean 4.32.1 / Mathlib 4.32.1
-        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'lean-frustration' || steps.request.outputs.suite == 'lean-memoryless' }}
+        if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'lean-frustration' || steps.request.outputs.suite == 'lean-memoryless' || steps.request.outputs.suite == 'lean-extinction' }}
         uses: leanprover/lean-action@f061402b660e0c34644504b324e830f2991d4865
         with:
           lake-package-directory: private-src/lean-proofs
@@ -209,6 +210,27 @@ jobs:
             exit 1
           fi
           echo 'Memoryless KRK arbitrary-board Lean module: PASS (pinned source).'
+
+      - name: Compile and audit rule-derived KRK geometric extinction theorem
+        if: ${{ steps.request.outputs.suite == 'lean-extinction' }}
+        working-directory: private-src/lean-proofs
+        run: |
+          set -euo pipefail
+          source1='RecordAlgebra/Chess/KRKGeometricNilpotence.lean'
+          source2='RecordAlgebra/Chess/KRKGeometricExtinctionChess.lean'
+          logfile="$(mktemp "$RUNNER_TEMP/cheq-extinction-lean.XXXXXX")"
+          trap 'rm -f "$logfile"' EXIT
+          for source in "$source1" "$source2"; do
+            [[ -f "$source" ]] || { echo '::error::Missing pinned geometric extinction Lean source.'; exit 1; }
+            if grep -nE '^[[:space:]]*(sorry|admit|axiom)([[:space:]]|$)' "$source" >"$logfile"; then
+              echo '::error::Explicit proof hole or axiom in extinction Lean root.'; exit 1
+            fi
+          done
+          if ! timeout 2400s lake build RecordAlgebra.Chess.KRKGeometricExtinctionChess >"$logfile" 2>&1; then
+            echo '::error::Geometric extinction KRK Lean build FAIL or TIMEOUT; private diagnostics suppressed.'
+            exit 1
+          fi
+          echo 'Geometric extinction KRK rule/algebra/checkmate Lean modules: PASS (pinned source).'
 
       - name: Compile and audit Lean finite Q2 boundary certificate
         if: ${{ steps.request.outputs.suite == 'lean-boundary' || steps.request.outputs.suite == 'lean-causal' || steps.request.outputs.suite == 'lean-frustration' }}
