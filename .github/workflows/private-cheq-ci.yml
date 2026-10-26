@@ -988,6 +988,36 @@ jobs:
           fi
           grep '^CHECKED_Q2_DIRECTIONAL_FENCE_SCALARS_ONLY' "$output" || true
 
+      - name: Report enlarged directional phase-handoff support graph
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-directional-phase.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from geometric_phase_handoff_audit import exhaustive
+          for n in (4,5,6):
+              r=exhaustive(n,variant='directional')
+              c=r['counts']
+              print('CHECKED_Q2_DIRECTIONAL_HANDOFF_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' roots='+str(c['roots'])
+                    +' fence_roots='+str(c['roots_fence'])
+                    +' pulse_roots='+str(c['roots_edgeward_check'])
+                    +' unsupported='+str(c['roots_empty'])
+                    +' supported_actions='+str(c['supported_actions'])
+                    +' nonterminal_cycle='+str(r['nonterminal_cycle_found'])
+                    +' longest_supported_nonterminal_path='+str(
+                        r.get('max_nonterminal_rounds_until_deadlock_or_mate'))
+                    +' complete_win='+str(r['complete_winning_controller']))
+          PY
+          then
+            echo '::error::Directional phase-handoff support verification failed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_DIRECTIONAL_HANDOFF_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
