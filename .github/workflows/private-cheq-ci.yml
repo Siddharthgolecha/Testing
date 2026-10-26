@@ -861,6 +861,44 @@ jobs:
           fi
           grep '^CHECKED_Q2_FENCE_LYAPUNOV_SCALARS_ONLY' "$output" || true
 
+      - name: Report geometric fence exits and edgeward checks
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-fence-exits.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from clear_fence_exit_audit import audit
+          from edgeward_check_pulse_audit import verify_board
+          for n in (4,5,6):
+              e=audit(n)
+              x=verify_board(n)
+              c=e['counts']
+              d=x['counts']
+              print('CHECKED_Q2_FENCE_EXIT_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' deadlocks='+str(c['deadlock'])
+                    +' total_safe_exits='+str(c['safe_exits'])
+                    +' rook_checks='+str(c.get('exit_rook_check',0))
+                    +' breaking_fence='+str(c.get('exit_break_fence',0))
+                    +' remaining_fence='+str(c.get('exit_same_fence',0))
+                    +' mate_exits='+str(c.get('exit_mate',0)))
+              print('CHECKED_Q2_EDGEWARD_PULSE_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' certified_rook_check_pulses='+str(d.get('accepted_pulses',0))
+                    +' roots_with_pulses='+str(d.get('roots_with_edgeward_pulse',0))
+                    +' fence_deadlocks_with_pulse='+str(d.get('deadlocks_with_edgeward_pulse',0))
+                    +' fence_deadlocks_with_any_safe_check='+str(d.get('deadlocks_with_any_safe_check',0))
+                    +' direct_mate_deadlocks='+str(d.get('deadlocks_with_direct_mate',0))
+                    +' checked_human_replies='+str(d.get('Black_responses_checked',0)))
+          PY
+          then
+            echo '::error::Fence exit or edgeward-check audit failed; private diagnostics suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_\(FENCE_EXIT\|EDGEWARD_PULSE\)_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
