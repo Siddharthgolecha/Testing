@@ -1018,6 +1018,41 @@ jobs:
           fi
           grep '^CHECKED_Q2_DIRECTIONAL_HANDOFF_SCALARS_ONLY' "$output" || true
 
+      - name: Report geometry-only fence nucleation and cycle witness
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-fence-nucleation.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from directional_fence_nucleation_audit import verify_board
+          from geometric_phase_handoff_audit import exhaustive
+          for n in (4,5,6):
+              r=verify_board(n)
+              c=r['counts']
+              print('CHECKED_Q2_FENCE_NUCLEATION_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' outside_roots='+str(c['outside_sector_roots'])
+                    +' nucleatable_roots='+str(c['outside_roots_with_nucleation'])
+                    +' safe_nucleation_moves='+str(c['accepted_nucleation_actions'])
+                    +' Black_replies_checked='+str(c['human_replies_checked']))
+              t=exhaustive(n,variant='nucleating')
+              counts=t['counts']
+              print('CHECKED_Q2_NUCLEATING_HANDOFF_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' empty='+str(counts['roots_empty'])
+                    +' supported_actions='+str(counts['supported_actions'])
+                    +' has_cycle='+str(t['nonterminal_cycle_found'])
+                    +' cycle_rounds='+str(t.get('cycle_length',0))
+                    +' full_controller='+str(t['complete_winning_controller']))
+          PY
+          then
+            echo '::error::Fence nucleation and cycle audit failed; private data suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_\(FENCE_NUCLEATION\|NUCLEATING_HANDOFF\)_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
