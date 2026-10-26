@@ -899,6 +899,33 @@ jobs:
           fi
           grep '^CHECKED_Q2_\(FENCE_EXIT\|EDGEWARD_PULSE\)_SCALARS_ONLY' "$output" || true
 
+      - name: Report two-turn certified fence repair limitations
+        if: ${{ steps.request.outputs.suite == 'typed-geometry' }}
+        working-directory: private-src
+        run: |
+          set -euo pipefail
+          output="$(mktemp "$RUNNER_TEMP/cheq-fence-repair.XXXXXX")"
+          trap 'rm -f "$output"' EXIT
+          if ! PYTHONPATH="Q2/experiments/hamiltonian_adaptive" python -B - >"$output" 2>&1 <<'PY'
+          from two_turn_fence_repair_audit import audit_board
+          for n in (4,5,6):
+              data=audit_board(n)
+              c=data['counts']
+              print('CHECKED_Q2_TWO_TURN_REPAIR_SCALARS_ONLY'
+                    +' n='+str(n)
+                    +' deadlocks='+str(c['deadlocks'])
+                    +' safe_first_actions='+str(c['safe_first_actions'])
+                    +' certified_first_actions='+str(c['certified_first_actions'])
+                    +' roots_with_two_turn_repair='+str(c['roots_with_two_turn_repair'])
+                    +' first_unresolved='+str(data['first_unresolved_roots'][:1]).replace(' ','')
+                    +' adversarial_ANDOR_OFFLINE_ONLY=True')
+          PY
+          then
+            echo '::error::Offline two-turn fence repair audit failed; private logs suppressed.'
+            exit 1
+          fi
+          grep '^CHECKED_Q2_TWO_TURN_REPAIR_SCALARS_ONLY' "$output" || true
+
       - name: Cleanup ephemeral private checkout
         if: always()
         run: |
