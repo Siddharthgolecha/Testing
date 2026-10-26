@@ -156,3 +156,28 @@ The present method is a **correct finite bound, not a novelty claim**.
 To advance toward universal Goldbach, one needs a substantially
 stronger interval-local estimate or provable cancellation beyond
 the second-moment/triangle-inequality losses.
+
+### How much do we gain from Fourier cancellation?
+
+A direct absolute-value estimate on the *nonzero* Fourier terms of a
+length-L window gives this sufficient condition for every cyclic
+length-L window to contain at least one survivor:
+
+```
+L*A/M > (1/M)*sum_{h=1}^{M-1} |fhat(h)|
+                            *|sin(pi*h*L/M)/sin(pi*h/M)|.
+```
+
+This inequality is fully rigorous, but taking absolute values destroys
+cancellation among the different frequencies. Finite exact-coefficient
+tests give:
+
+| M | N | smallest Fourier-L1 certified window L | optimized second-moment certified gap |
+|---|---:|---:|---:|
+| 210 | 212 | 72 | 49 |
+| 210 | 226 | 60 | 42 |
+
+In these cases the correlation/second-moment technique is a strictly
+better certificate than the naive Fourier triangle bound. An advance
+based on Fourier analysis would need **structured sign cancellation**
+in the centered target interval, not just spectral factorization.
