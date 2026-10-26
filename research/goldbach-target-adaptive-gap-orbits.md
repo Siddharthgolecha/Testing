@@ -181,3 +181,24 @@ In these cases the correlation/second-moment technique is a strictly
 better certificate than the naive Fourier triangle bound. An advance
 based on Fourier analysis would need **structured sign cancellation**
 in the centered target interval, not just spectral factorization.
+
+### Negative control: short-range correlations also lose gap information
+
+At M=2310, N=38 and N=82 both have 135 survivors. Their complete
+two-point correlation values R(d) agree **for every integer 0<=d<=11**,
+but their exact maximum cyclic gaps are respectively 42 and 66. They
+first differ at d=12, where R(12) is 42 versus 56.
+
+Thus even knowing the local pair correlations through separation 11 does
+not determine the longest gap. This is a *finite counterexample* to a
+low-order truncation heuristic, not a general impossibility theorem.
+A rigorous infinite-range argument would need longer-range or
+higher-order information.
+
+**Additional literature:** Gadiyar and Padma, *Ramanujan-Fourier
+series, the Wiener-Khintchine formula and the distribution of prime
+pairs*, Physica A 269 (1999), pp. 503--510,
+https://doi.org/10.1016/S0378-4371(99)00171-5.
+It already relates prime-pair questions to autocorrelations and
+Fourier/spectral methods. Our finite identity is not asserted to be
+an original version of that approach.
